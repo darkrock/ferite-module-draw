@@ -1,0 +1,478 @@
+-------------------------------------------------------------------------------
+2008-07-22 18:04 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Renamed to Draw.
+ * Added function Draw.Base.renderItems( array items ).
+ * Made some clean ups.
+ * Renamed Document to PDF.
+ * Renamed template in PDF to background and moved it to Base.
+ * Renamed Template to PNG.
+ * Added Draw.Item.Chart class with common function for charts.
+ * Added Draw.Item.LinesChart class.
+ * Added Draw.Item.BarsChart class.
+ * Added rotate() function to Item.Text which is very specific for Chart at
+   the moment.
+
+-------------------------------------------------------------------------------
+2008-03-28 10:18 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added support for alignment and justification of text items.
+ * Added examples for how to use that.
+
+-------------------------------------------------------------------------------
+2008-03-26 09:40 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added more Creator table examples.
+
+-------------------------------------------------------------------------------
+2008-03-26 09:39 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added support for TextFont and TextColor in Tables in Creator.
+
+-------------------------------------------------------------------------------
+2008-03-26 09:00 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Renamed dynamicRowsFirst to autoRowsFirst.
+
+-------------------------------------------------------------------------------
+2008-03-26 08:48 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * A little change in the install instructions.
+
+-------------------------------------------------------------------------------
+2008-03-25 17:19 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added INSTALL file.
+
+-------------------------------------------------------------------------------
+2008-03-25 17:10 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added examples.
+
+-------------------------------------------------------------------------------
+2008-03-25 17:00 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added ugly hack to allow text in XML files which is not inside Text tags.
+
+-------------------------------------------------------------------------------
+2008-03-25 16:44 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * API doc comment fix for PDF.Item.Text.
+
+-------------------------------------------------------------------------------
+2008-03-25 16:43 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added getMarginTop(), getMarginBottom(), getMarginRight(), getMarginLeft to
+   the PDF.Base class.
+ * Fixed rendering issie in PDF.Item.Text.
+
+-------------------------------------------------------------------------------
+2008-03-25 16:08 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added API doc comment for namespace PDF in pdfcreator.feh.
+ * Added farm.yard file and pdf.xml.
+
+-------------------------------------------------------------------------------
+2008-03-25 15:54 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added comment in EllipseContainer.render().
+ * Document.renderTemplate() function renamed to setTemplate().
+ * Removed commented function in class PDF.Item.Text.
+ * Added some API doc warnings.
+ * Added support for setting background color for a TableColumn element
+   inside a TalbleRow element.
+ * Added support for setting header text with attribute TextValue in a
+   TableColumn element.
+ * Cleaned up class PDF.ItemElement.Table to make it easier to understand.
+ * Added support for Padding and TextFont in PDF.ItemElement.Table.
+
+-------------------------------------------------------------------------------
+2008-03-25 13:38 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Cleaned up a bit in function PDF.Item.Container.render().
+ * Added functions getHeight() and getWidth() to the PDF.Base class.
+ * Added object document as a parameter to PDF.Item.Item.render().
+ * Renamed PDF.Item.Image.setImage() to setFile().
+ * Fixed rendering issue with Ellipses.
+ * Added class PDF.Color.
+ * Moved function PDF.getRGBColors() to
+   PDF.Creator.ItemElement.ItemElement.getRGBColor().
+ * Converted the code to use the Color class instead of numbers for red, green
+   and blue.
+ * Added function setBackgroundColor() to class PDF.Item.Item.
+ * Added function PDF.Item.Text.renderText() for future use.
+
+-------------------------------------------------------------------------------
+2008-03-20 17:21 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some support for background colors in table cells.
+ * Removed function renderItem(object item, string backgroundColor) from
+   the PDF.Item.Container class. 
+
+-------------------------------------------------------------------------------
+2008-03-20 15:29 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some API doc comments.
+ * The Container class can now render background colors in cells.
+ * Added another renderItem() function to the Container class in which you
+   can set the background color for that item.
+ * Cleaned up a bit to make things more readable.
+
+-------------------------------------------------------------------------------
+2008-03-20 11:18 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some API doc comments.
+ * Changed ItemElement.stringToBoolean() to protected.
+
+-------------------------------------------------------------------------------
+2008-03-20 11:09 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Rewrote the Table ItemElement so it no longer uses the ugly hack version
+   of processElement().
+ * Removed ugly hack version of PDF.Creator.processElement().
+
+-------------------------------------------------------------------------------
+2008-03-20 10:50 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some comments
+
+-------------------------------------------------------------------------------
+2008-03-20 10:35 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Removed some commented code.
+ * Added a comment.
+
+-------------------------------------------------------------------------------
+2008-03-20 10:05 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Fixed bug in the rendering of Containers.
+
+-------------------------------------------------------------------------------
+2008-03-20 08:59 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * If now file has been set in an Image item, the item does not try to draw
+   itself.
+ * Removed debug output in function processAttributes() in class ItemElement.
+
+-------------------------------------------------------------------------------
+2008-03-20 08:55 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Fixed size issue with A4 landscape.
+ * The PDF creator can now create documents in with page types landscape and
+   portrait.
+ * The Text ItemElement now displays it's text correctly.
+ * The Table ItemElement now displays headers and text inside TableColumns
+   correctly.
+
+-------------------------------------------------------------------------------
+2008-03-19 15:58 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Ellipses and rectangles does not try to draw themselves if their width or
+   height is 0. This fixes bug that made new pages not beeing created.
+
+-------------------------------------------------------------------------------
+2008-03-19 15:32 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * You can now set the border color for a Container.
+ * The PDF creator now uses the reflection module.
+ * ItemElements in PDF.Creator are now created using Class.locate instead of
+   switch case statements.
+ * Changed page types to PAGE_TYPE_A4_PORTRAIT and PAGE_TYPE_LETTER_PORTRAIT.
+ * The values for items are now set in the values array not in the itemValues
+   array in class PDF.Creator.
+ * ItemElement.setAttributes() is renamed to ItemElement.processAttributes( )
+   and this function now sets the attributes instead of createItem().
+ * ItemElement.createItem() is renamed to ItemElement.getItem().
+ * Using Array.map() instead of Array.eachWithIndex() on places where
+   Array.eachWithIndex() where used before.
+ * Removed function ItemElement.setCreator().
+ * ItemElement.setChildren() is renamed to ItemElement.handleChildren().
+ * Added functions setID(), setMargin(), setMarginTop(), setMarginBottom(),
+   setMarginRight(), setMarginLeft(), stringToBoolean() to
+   the ItemElement class.
+ * Added classes PDF.ItemElement.Value and PDF.ItemElement.Circle.
+ * Changed classes Text, Image, Rectangle, Ellipse and Table in
+   the PDF.ItemElement namespace so they work with the new design
+   of PDF.ItemElement.ItemElement.
+
+-------------------------------------------------------------------------------
+2008-03-18 16:42 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added support for selecting colors.
+ * Added page types for portrait and landscape.
+
+-------------------------------------------------------------------------------
+2008-03-18 11:48 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added API doc comments.
+
+-------------------------------------------------------------------------------
+2008-03-18 11:24 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Changed the default font size in the text item from 14 to 12.
+ * Replaced alot of for loops with Array.each() in the PDF Creator.
+ * The Table ItemElement now render it's content the right way.
+
+-------------------------------------------------------------------------------
+2008-03-17 14:27 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Removed function drawText(), drawImage(), drawRectangle(), drawEllipse()
+   and drawTable(). These functions are being replaced by classes.
+ * Removed commented function drawLine().
+ * Added namespace ItemElement.
+ * Added classes ItemElement, Text, Image, Rectangle, Ellipse and Table to
+   the ItemElement namespace.
+ * Added another ugly hack version of processElement() to the Creator class.
+   And may I say that I really don't like libxml2.
+ * Added function createItemElement() to the Creator class.
+ * The PDF Creator can now draw webframework style tables.
+
+-------------------------------------------------------------------------------
+2008-03-14 16:03 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Renamed namespace PDF.Items to PDF.Item.
+ * Renamed namespace PDF.Items.Shapes PDF.Item.Shape
+
+-------------------------------------------------------------------------------
+2008-03-14 15:01 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Fixed bug in PDF.Creator.drawTable().
+
+-------------------------------------------------------------------------------
+2008-03-14 13:03 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some more page types.
+
+-------------------------------------------------------------------------------
+2008-03-14 11:49 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Moved all items to the PDF.Items namespace.
+ * Moved all shapes to the PDF.Items.Shapes namespace.
+ * Changed so the PDF.Creator uses the new namespaces.
+ * Added API doc comments to everything that did not have it.
+
+-------------------------------------------------------------------------------
+2008-03-14 11:03 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added support for drawing borders around the columns in the Container.
+ * Added setBorderWidth( ) in class PDF.Container.
+ * Added override for setBorder( ) in PDF.EllipseContainer and
+   PDF.RectangleContainer.
+ * Added case borderWidth in function drawTable( ) in PDF.Creator.
+
+-------------------------------------------------------------------------------
+2008-03-14 09:05 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added support for drawing tables in the PDF.Creator class.
+ * Removed support for drawing lines since a way to draw straight lines
+   without changing the render() function in the PDF.Line class need
+   to be figured out.
+
+-------------------------------------------------------------------------------
+2008-03-13 16:47 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Some changes to the PDF.RectangleContainer class and
+ 	the PDF.EllipseContainer class.
+
+-------------------------------------------------------------------------------
+2008-03-13 11:32 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * The Container class now has support for columns.
+ * Added alot of API doc comments.
+ * Changed of the RectangleContainer and EllipseContainer are drawn.
+
+-------------------------------------------------------------------------------
+2008-03-12 15:44 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Removed commented lines for debug output in class PDF.Creator.
+ * Added function setValues() to the class PDF.Creator.
+ * Added support for replacing <value name="name"/> with a set value matching
+   the name.
+
+-------------------------------------------------------------------------------
+2008-03-12 14:36 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Changed how PDF.Line items are drawn.
+ * Added drawLine() function to PDF.Creator and line case in processElement().
+
+-------------------------------------------------------------------------------
+2008-03-12 14:14 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Image items now scale their images the right way.
+ * Added class PDF.EllipseContainer;
+ * The class PDF.RectangleContainer now draws it's rectangle the right way.
+ * Some more small changes to PDF items.
+ * Added function drawEllipse() the class PDF.Creator.
+ * Added case for ellipse in processElement() in PDF.Creator.
+ * Added filled case to the function drawRectangle() in PDF.Creator.
+
+-------------------------------------------------------------------------------
+2008-03-12 10:43 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Removed debug output.
+ * Added case for width and height in drawRectangle() in the PDF.Creator class.
+
+-------------------------------------------------------------------------------
+2008-03-12 10:25 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Fixed the dates in the ChangeLog.
+
+-------------------------------------------------------------------------------
+2008-03-12 10:24 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added class PDF.Position.
+ * Changed everywhere to use the Position class instead of too numbers for
+   x and y.
+ * Removed getWidth(), getHeight(), getMarginTop(), getMarginBottom(),
+   getMarginLeft(), getMarginRight(), getBodyWidth() and getBodyHeight() from
+   the PDF.Base class.
+ * Added function setMargin() to the PDF.Base class.
+ * Renamed setTemplate() to renderTemplate() in the PDF.Document class.
+ * Removed getMarginTop(), getMarginLeft(), getMarginRight() and
+   getMarginBottom() from the PDF.Item class.
+ * Changed the render() function to
+   render( object context, object beginPosition, object limitPosition) in
+   the PDF.Item class. 
+ * Added render( object context, object beginPosition ) to the PDF.Item class.
+ * Added class PDF.RectangleContainer.
+ * Added constructor to the class PDF.Line.
+ * Added constructor to the class PDF.Rectangle.
+ * Added drawRectangle() to the PDF.Creator class.
+ * Added constructor for the PDF.Creator class.
+ * Added member variables pages and inPageElement to the PDF.Creator class.
+ * Added case for page and rectangle in PDF.Creator.processElement().
+ * Added case for margin in the functions drawText() and drawImage() in
+   the PDF.Creator class.
+
+-------------------------------------------------------------------------------
+2008-03-10 21:18 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Removed the width and height member variables from the PDF.Image class.
+ * Added a constructor with default values to the PDF.Text class.
+ * Implemented the functions PDF.Creator.processElement(),
+   PDF.Creator.drawText() and PDF.Creator.drawImage().
+
+-------------------------------------------------------------------------------
+2008-03-10 11:16 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Fixed alot of wrong-rendering in the text item, image item and
+   rectangle shape.
+
+-------------------------------------------------------------------------------
+2008-03-04 17:12 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Text.render() and Image.render now uses Document.getBodyWidth() and
+   Document.getBodyHeight() instead of getWidth() and getHeight().
+ * Added ShapeContainer class that extends Shape.
+ * Made Rectangle extend ShapeContainer instead of Shape.
+ * Fixed issues in Rectangle.render() for it to work like a container.
+ * Added and implemented getPageType() in Creator.
+ * Begininig of implementation for parseChunk() and drawText() in Creator.
+
+-------------------------------------------------------------------------------
+2008-03-04 17:10 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added file pdfcreator.feh that contains the PDF.Creator class.
+
+-------------------------------------------------------------------------------
+2008-03-04 15:30 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * The template constructor now sets the source rgb to black after it has
+   painted the document white.
+
+-------------------------------------------------------------------------------
+2008-03-04 14:58 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Made the Document class an abstract Base class that the a Document and
+   Template class extends.
+ * When the beginXPosition is set for non fixed items the leftMargin for
+   the document is used.
+
+-------------------------------------------------------------------------------
+2008-03-04 11:40 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Removed PDF.Document.getContext().
+ * Changed PDF.Item.render( object document ) to
+   PDF.Item.render(object document, object context).
+ * The image item now scales the image if it does not fit on the remaining
+   space on a page and ignores images that does not fit at all.
+
+-------------------------------------------------------------------------------
+2008-03-04 09:09 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added an option to the text item that lets you choose if you want automatic
+   new page creation or not.
+
+-------------------------------------------------------------------------------
+2008-02-27 15:13 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added the class PDF.Ellipse to elippses can now be drawn.
+
+-------------------------------------------------------------------------------
+2008-02-27 13:54 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added dependency on the math namespace.
+ * Removed setHeight() and setWidth() functions in the PDF.Rectangle class
+   and instead added a constructor that takes width and height as arguments.
+ * Added the class PDF.Circle to circles can now be drawn to a document.
+
+-------------------------------------------------------------------------------
+2008-02-27 11:05 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added Document.getBodyWidth() and Document.getBodyHeight() which returns
+   the width subtracted by the left and right margins and the height
+   subtracted by the top end the bottom margins.
+ * Items can now be set in a fixed position mode so they can be draw at an
+   exact position instead of just after each othter.
+ * Added a Shape class that contains base functions for shapes like rectangles.
+ * Added the PDF.Line class that draws lines.
+ * Added the PDF.Rectangle class that draws rectangles.
+
+-------------------------------------------------------------------------------
+2008-02-26 08:50 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Now compatible with the latest changes in the Cairo module.
+
+-------------------------------------------------------------------------------
+2008-02-26 08:44 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added more comments.
+ * Removed addText() and addImage() from the PDF.Document class and added
+   addItem() instead.
+ * Added render() in the PDF.Image class so image items now can render images.
+ * Fixed a lot of wrong-rendering in the text item.
+ * Made som other small fixes.
+
+-------------------------------------------------------------------------------
+2008-02-18 16:56 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Fixed bug in the PDF.Document.constructor().
+
+-------------------------------------------------------------------------------
+2008-02-18 16:50 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some more comments.
+ * Renamed PDF.Document.loadTemplate() to setTemplate() and renamed
+   PDF.Document.templatePath to template.
+ * Added function PDF.Document.render().
+ * Added som small functions and made some small changes.
+
+-------------------------------------------------------------------------------
+2008-02-13 17:14 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added some comments.
+
+-------------------------------------------------------------------------------
+2008-02-13 16:20 (CET) Tobias Eriksson <tobias@cention.se>
+
+ * Added properties to the PDF.Item class that is needed for a item to be
+   able to draw itself correctly on the PDF surface.
+ * Some small changes on how the rendering algorithm works for rendering text.
+
+-------------------------------------------------------------------------------
+2008-02-13 12:41 (CET) Tobias Eriksson <tobias@cention.se>
+
+ Initial release to the world. Have fun.
+
+-------------------------------------------------------------------------------
+

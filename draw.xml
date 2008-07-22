@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<module>
+	<name>Draw</name>
+	<documentation-list>
+		<include>draw.feh</include>
+		<include>draw-template.feh</include>
+	</documentation-list>
+	<dependance-list>
+	</dependance-list>
+</module>
+

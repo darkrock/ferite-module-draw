@@ -1,0 +1,855 @@
+uses 'array';
+uses 'console';
+uses 'filesystem';
+uses 'reflection';
+uses 'regexp';
+uses 'xml';
+
+uses 'draw.feh';
+
+/**
+ * @namespace Draw
+ * @brief Contains classes for drawing to PDF documents
+ */
+namespace modifies Draw
+{
+	/**
+	 * @class Creator
+	 * @brief Creates PDF documents from XML descriptions
+	 */
+	class Creator
+	{
+		private number pages;
+		private boolean inPageElement;
+		private array values;
+		
+		public function constructor( )
+		{
+			.pages = 0;
+			.inPageElement = false;
+			.values = [ ];
+		}
+		
+		private function createItemElement( string name )
+		{
+			void klass = Class.locate( "Draw.ItemElement." + name );
+			
+			if( klass != null )
+			{
+				object itemElement = new klass( );
+				return itemElement;
+			}
+			
+			return null;
+		}
+		
+		private function getPageType( string pageSize, string pageType )
+		{
+			pageSize = pageSize.toLower( );
+			pageType = pageType.toLower( );
+			
+			switch( pageSize )
+			{
+				case "letter":
+					if( pageType == "landscape" )
+						return Draw.PAGE_TYPE_LETTER_LANDSCAPE;
+					return Draw.PAGE_TYPE_LETTER_PORTRAIT;
+				case "a4":
+				default:
+					if( pageType == "landscape" )
+						return Draw.PAGE_TYPE_A4_LANDSCAPE;
+					return  Draw.PAGE_TYPE_A4_PORTRAIT;
+			}
+		}
+		
+		public function setInPageElement( boolean inPageElement )
+			.inPageElement = inPageElement;
+		
+		/**
+		 * @function processElement
+		 * @declaration function processElement( object document, object element )
+		 * @brief Process a XML element to create and render a PDF item
+		 * @param object document the PDF document to render to
+		 * @param object element the XML element to process
+		 */
+		public function processElement( object document, object element )
+		{
+			string name = element.getElementName( );
+			string data = element.getElementData( );
+			array attributes = element.getAttributes( );
+			array children = element.getChildren( );
+			
+			if( name == "Page" )
+			{
+				if( .pages > 0 )
+					document.newPage( );
+				
+				.pages++;
+				
+				attributes.map( ) using ( key, value )
+				{
+					switch( key )
+					{
+						case 'Margin':
+							document.setMargin( value.toNumber( ) );
+							break;
+						case 'MarginTop':
+							document.setMarginTop( value.toNumber( ) );
+							break;
+						case 'MarginBottom':
+							document.setMarginBottom( value.toNumber( ) );
+							break;
+						case 'MarginLeft':
+							document.setMarginLeft( value.toNumber( ) );
+							break;
+						case 'MarginRight':
+							document.setMarginRight( value.toNumber( ) );
+							break;
+						case 'Template':
+							document.setTemplate( value );
+							break;
+					}
+				};
+				
+				.inPageElement = true;
+				
+				if( element.hasChildren( ) )
+				{
+					array children = element.getChildren( );
+					number childrenSize = children.size( );
+					for( number i = 0; i < childrenSize; i++ )
+					{
+						object child = children[i];
+						.processElement( document, child );
+					}
+				}
+				
+				.inPageElement = false;
+			}
+			else
+			{
+				if( .inPageElement )
+				{
+					object itemElement;
+					object item;
+					
+					itemElement = .createItemElement( name );
+					
+					if( itemElement )
+					{
+						if( element.hasAttribute( "ID" ) )
+						{
+							string id = element.getAttributeByName( "ID" );
+							if( .values.keyExists( id ) )
+							{
+								void value = .values[ id ];
+								if( value isa array )
+									itemElement.setValues( .values[ id ] );
+								else
+									itemElement.setValues( [ id => value ] );
+							}
+						}
+						
+						itemElement.processAttributes( attributes );
+						itemElement.handleChildren( children, self );
+						itemElement.setData( data );
+						
+						item = itemElement.getItem( );
+						
+						if( item )
+							document.renderItem( item );
+					}
+				}
+			}
+		}
+		
+		/**
+		 * @function setValues
+		 * @declaration function setValues( array values )
+		 * @brief Set the values
+		 * @param array values an array with values
+		 */
+		public function setValues( array values )
+		{
+			values.map( ) using ( key, value )
+			{
+				.values[ key ] = value;
+			};
+		}
+		
+		/**
+		 * @function setValues
+		 * @declaration function setValues( array values, string id )
+		 * @brief Set the values for an item
+		 * @param array values an array with values
+		 * @param string id the id attribute of the XML element
+		 */
+		public function setValues( array values, string id )
+			.values[ id ] = values;
+		
+		/**
+		 * @function getValue
+		 * @declaration funtion getValue( string id )
+		 * @brief Get a value with a specified ID
+		 * @param string id the ID of the value to get
+		 */
+		public function getValue( string id )
+		{
+			if( .values.keyExists( id ) )
+				return .values[ id ];
+			else
+				return null;
+		}
+		
+		/**
+		 * @function createFromFile
+		 * @declaration function createFromFile( string inputFile, string outputFile )
+		 * @brief Create a PDF document from a XML description file
+		 * @param string inputFile the XML file
+		 * @param string outputFile the filename of the new PDF document
+		 */
+		public function createFromFile( string inputFile, string outputFile )
+		{
+			object file = File.open( inputFile, FileSystem.O_RDONLY );
+			if( file )
+				.createFromChunk( file.toString( ), outputFile );
+		}
+		
+		/**
+		 * @function createFromChunk
+		 * @declaration function createFromChunk( string chunk, string outputFile )
+		 * @brief Create a PDF document from a XML description string
+		 * @param string chunk the XML string
+		 * @param string outputFile the filename of the new PDF document
+		 */
+		public function createFromChunk( string chunk, string outputFile )
+		{
+			object parser;
+			object element;
+			object document;
+			array children;
+			number childrenSize;
+			string pageSize;
+			string pageType;
+			
+			parser = new XML.TreeParser( );
+			parser.keepBlanks( false );
+			parser.parseChunk( chunk );
+			element = parser.getDocumentElement( );
+			
+			if( element.getElementName( ) == "File" )
+			{
+				pageSize = element.getAttributeByName( 'PageSize' );
+				pageType = element.getAttributeByName( 'PageType' );
+				
+				document = new Draw.Document( outputFile, .getPageType( pageSize, pageType ) );
+				
+				children = element.getChildren( );
+				children.each( ) using ( child )
+				{
+					.processElement( document, child );
+				};
+			}
+		}
+	}
+	/**
+	 * @end
+	 */
+	
+	/**
+	 * @namespace ItemElement
+	 * @brief Contains ItemElements that the Draw.Creator use
+	 */
+	namespace ItemElement
+	{
+		/**
+		 * @class ItemElement
+		 * @brief The base class of ItemElements
+		 */
+		abstract class ItemElement
+		{
+			protected string id;
+			protected object item;
+			protected array values;
+			
+			/**
+			 * @function processAttributes
+			 * @declaration function proessAttributes( array attributes )
+			 * @brief Process the item element's attributes
+			 * @param array attributes an array of attributes
+			 */
+			public function processAttributes( array attributes )
+			{
+				object objr = new Object( self );
+				
+				attributes.map( ) using ( key, value )
+				{
+					object func = objr.getFunction( "set${key}" );
+					if( func )
+						func.exec( value );
+				};
+			}
+			
+			/**
+			 * @function setData
+			 * @declaration function setData( string data )
+			 * @breif Set the item element's data
+			 * @param string data a string of data
+			 */
+			public function setData( string data );
+			
+			/**
+			 * @function handleChildren
+			 * @declaration function handleChildren( array children, object creator )
+			 * @brief Handle the item element's children
+			 * @param array children an array of children
+			 * @param object creator a creator object
+			 */
+			public function handleChildren( array children, object creator );
+			
+			/**
+			 * @function setValues
+			 * @declaration function setValues( array values )
+			 * @brief Set values for the element item
+			 * @param array value an array of values
+			 */
+			public function setValues( array values )
+				.values = values;
+			
+			/**
+			 * @function getItem
+			 * @declaration getItem( )
+			 * @brief Get the Draw.Item.Item
+			 */
+			public function getItem( )
+				return .item;
+			
+			protected function stringToBoolean( string value )
+			{
+				switch( value.toLower( ) )
+				{
+					case "true":
+					case "yes":
+					case "on":
+						return true;
+					case "false":
+					case "no":
+					case "off":
+						return false;
+				}
+				
+				return false;
+			}
+			
+			protected function getRGBColor( string hexColor )
+			{
+				object rgbColor = new Draw.Color( );
+				array blocks;
+				number blockNum = 1;
+				
+				hexColor = hexColor.preTrim( '#' );
+				
+				if( hexColor.length() != 6 )
+					return new Draw.Color( 1.0, 1.0, 1.0 );
+				
+				blocks = hexColor.blocks( 2 );
+				
+				blocks.each( ) using ( block )
+				{
+					number hex;
+					number rgb;
+					
+					block = "0x${block}";
+					hex = block.toNumber( );
+					rgb = hex / 255.0;
+					
+					if( blockNum == 1 )
+						rgbColor.red = rgb;
+					else if( blockNum == 2 )
+						rgbColor.green = rgb;
+					else
+						rgbColor.blue = rgb;
+					
+					blockNum++;
+				};
+				
+				return rgbColor;
+			}
+			
+			public function setID( string id )
+				.id = id;
+			
+			public function setMargin( string margin )
+				.item.setMargin( margin.toNumber( ) );
+			
+			public function setMarginTop( string margin )
+				.item.setMarginTop( margin.toNumber( ) );
+			
+			public function setMarginBottom( string margin )
+				.item.setMarginBottom( margin.toNumber( ) );
+			
+			public function setMarginLeft( string margin )
+				.item.setMarginLeft( margin.toNumber( ) );
+			
+			public function setMarginRight( string margin )
+				.item.setMarginRight( margin.toNumber( ) );
+		}
+		/**
+		 * @end
+		 */
+		
+		class Value extends Draw.ItemElement.ItemElement
+		{
+			public function constructor( )
+			{
+				.item = new Draw.Item.Text( );
+				.item.setMargin( 8 );
+			}
+			
+			public function getItem( )
+			{
+				if( .values.keyExists( .id ) )
+				{
+					.item.setText( .values[ .id ] );
+					return .item;
+				}
+				else
+				{
+					return null;
+				}
+			}
+		}
+		
+		/**
+		 * @class Text
+		 * @extends Draw.ItemElement.ItemElement
+		 */
+		class Text extends Draw.ItemElement.ItemElement
+		{
+			private boolean textIsSet;
+			
+			public function constructor( )
+			{
+				.item = new Draw.Item.Text( );
+				.textIsSet = false;
+			}
+			
+			public function setData( string data )
+			{
+				if( not .textIsSet )
+					.item.setText( data.trim( "\t\n\r" ) );
+			}
+			
+			public function setFont( string font )
+				.item.setFont( font );
+			
+			public function setColor( string color )
+				.item.setColor( .getRGBColor( color ) );
+			
+			public function setJustify( string justify )
+				.item.setJustify( .stringToBoolean( justify ) );
+			
+			public function setAlignment( string alignment )
+			{
+				number theAlignment;
+				switch( alignment )
+				{
+					case "center":
+						theAlignment = Draw.Item.Text.ALIGN_CENTER;
+						break;
+					case "right":
+						theAlignment = Draw.Item.Text.ALIGN_RIGHT;
+						break;
+					case "left":
+					default:
+						theAlignment = Draw.Item.Text.ALIGN_LEFT;
+						break;
+				}
+				.item.setAlignment( theAlignment );
+			}
+			
+			public function handleChildren( array children, object creator )
+			{
+				string text;
+				
+				children.each( ) using ( child )
+				{
+					string childName = child.getElementName( );
+					
+					if( childName == "text" or childName == "Text" )
+					{
+						text += child.getElementData( );
+					}
+					else if ( childName == "Value" and child.hasAttribute( "ID" ) )
+					{
+						string id = child.getAttributeByName( "ID" );
+						void value = creator.getValue( id );
+						if( value != null )
+							text += "${value}";
+					}
+				};
+				
+				text = text.trim( "\t\n\r" );
+				
+				.item.setText( text );
+				
+				if( text != "" )
+					.textIsSet = true;
+			}
+		}
+		/**
+		 * @end
+		 */
+		
+		class text extends Text { }
+		
+		/**
+		 * @class Image
+		 * @extends Draw.ItemElement.ItemElement
+		 */
+		class Image extends Draw.ItemElement.ItemElement
+		{
+			public function constructor( )
+				.item = new Draw.Item.Image( );
+			
+			public function setFile( string file )
+				.item.setFile( file );
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class Rectangle
+		 * @extends Draw.ItemElement.ItemElement
+		 */
+		class Rectangle extends Draw.ItemElement.ItemElement
+		{
+			public function constructor( )
+				.item = new Draw.Item.Shape.RectangleContainer( );
+			
+			public function setLineWidth( string lineWidth )
+				.item.setLineWidth( lineWidth.toNumber( ) );
+			
+			public function setColor( string color )
+				.item.setColor( .getRGBColor( color ) );
+			
+			public function setWidth( string width )
+				.item.setWidth( width.toNumber( ) );
+			
+			public function setHeight( string height )
+				.item.setHeight( height.toNumber( ) );
+			
+			public function setFilled( string filled )
+				.item.setFilled( .stringToBoolean( filled ) );
+			
+			public function handleChildren( array children, object creator )
+			{
+				children.each( ) using ( child )
+				{
+					creator.processElement( .item, child );
+				};
+			}
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class Circle
+		 * @extends Draw.ItemElement.ItemElement
+		 */
+		class Circle extends Draw.ItemElement.ItemElement
+		{
+			public function constructor( )
+				.item = new Draw.Item.Shape.Circle( );
+			
+			public function setLineWidth( string lineWidth )
+				.item.setLineWidth( lineWidth.toNumber( ) );
+						
+			public function setColor( string color )
+				.item.setColor( .getRGBColor( color ) );
+			
+			public function setFilled( string filled )
+				.item.setFilled( .stringToBoolean( filled ) );
+			
+			public function setRadius( string radius )
+				.item.setRadius( radius.toNumber( ) );
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class Ellipse
+		 * @extends Draw.ItemElement.ItemElement
+		 */
+		class Ellipse extends Draw.ItemElement.ItemElement
+		{
+			public function constructor( )
+				.item = new Draw.Item.Shape.EllipseContainer( );
+			
+			public function setLineWidth( string lineWidth )
+				.item.setLineWidth( lineWidth.toNumber( ) );
+			
+			public function setColor( string color )
+				.item.setColor( .getRGBColor( color ) );
+			
+			public function setWidth( string width )
+				.item.setWidth( width.toNumber( ) );
+			
+			public function setHeight( string height )
+				.item.setHeight( height.toNumber( ) );
+			
+			public function setFilled( string filled )
+				.item.setFilled( .stringToBoolean( filled ) );
+
+			public function handleChildren( array children, object creator )
+			{
+				children.each( ) using ( child )
+				{
+					creator.processElement( .item, child );
+				};
+			}
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class Table
+		 * @extends Draw.ItemElement.ItemElement
+		 */
+		class Table extends Draw.ItemElement.ItemElement
+		{
+			private boolean autoRowsFirst;
+			private boolean tableRowFound;
+			private boolean tableColumnFound;
+			private array columnHeaders;
+			private array columnContent;
+			private array tableColumns;
+			private array columnBackgroundColors;
+			private number columnCount;
+			
+			public function constructor( )
+			{
+				.item = new Draw.Item.Container( );
+				.autoRowsFirst = false;
+				.tableRowFound = false;
+				.tableColumnFound = false;
+				.columnHeaders = [ ];
+				.columnContent = [ ];
+				.tableColumns = [ ];
+				.columnBackgroundColors = [ ];
+				.columnCount = 0;
+			}
+			
+			public function setBorderWidth( string borderWidth )
+				.item.setBorderWidth( borderWidth.toNumber( ) );
+			
+			public function setBorderColor( string borderColor )
+				.item.setBorderColor( .getRGBColor( borderColor ) );
+			
+			public function setAutoRowsFirst( string autoRowsFirst )
+				.autoRowsFirst = .stringToBoolean( autoRowsFirst );
+			
+			public function handleChildren( array children, object creator )
+			{
+				.processTableColumns( children );
+				
+				if( .columnHeaders.size( ) > 0 )
+				{
+					.columnHeaders.each( ) using ( header )
+					{
+						.columnContent[ ] = header;
+					};
+				}
+				
+				if( .autoRowsFirst )
+					.processValues( );
+				
+				.processTableRows( children );
+				
+				if( not .autoRowsFirst )
+					.processValues( );
+				
+				.columnContent.each( ) using ( content )
+				{
+					if( content instanceof XML.Element )
+						creator.processElement( .item, content );
+					else if( content.getClass().isSubclassOfClass( Draw.Item.Item ) )
+						.item.renderItem( content );
+				};
+				
+				if( .columnCount == 0 )
+					.item = null; // Don't display the table
+				else
+				{
+					.item.setColumns( .columnCount );
+					.item.setColumnBackgroundColors( .columnBackgroundColors );
+				}
+			}
+			
+			private function processValues( )
+			{
+				.values.each( ) using ( columnValues )
+				{
+					.tableColumns.map( ) using ( id, element )
+					{
+						if( columnValues.keyExists( id ) )
+						{
+							string value = columnValues[ id ];
+							object item = new Draw.Item.Text( );
+							
+							if( element.hasAttribute( "Padding" ) )
+							{
+								string padding = element.getAttributeByName( "Padding" );
+								item.setMargin( padding.toNumber( ) );
+							}
+							else
+								item.setMargin( 8 );
+							
+							if( element.hasAttribute( "TextFont" ) )
+							{
+								string font = element.getAttributeByName( "TextFont" );
+								item.setFont( font );
+							}
+
+							if( element.hasAttribute( "TextColor" ) )
+							{
+								string color = element.getAttributeByName( "TextColor" );
+								item.setColor( .getRGBColor( color ) );
+							}
+							
+							item.setText( value );
+							.columnContent[ ] = item;
+						}
+					};
+				};
+			}
+			
+			private function processTableColumns( array &children )
+			{
+				children.each( ) using ( child )
+				{
+					string childName = child.getElementName( );
+					
+					if( childName == "TableColumn" and child.hasAttribute( "ID" ) )
+					{
+						string id = child.getAttributeByName( "ID" );
+						string textValue = id;
+						object item = new Draw.Item.Text( );
+						
+						.tableColumns[ id ] = child;
+						
+						if( child.hasAttribute( "TextValue" ) )
+							textValue = child.getAttributeByName( "TextValue" );
+						
+						if( child.hasAttribute( "BackgroundColor" ) )
+						{
+							string color = child.getAttributeByName( "BackgroundColor" );
+							.columnBackgroundColors[ ] = .getRGBColor( color );
+						}
+						else
+							.columnBackgroundColors[ ] = .getRGBColor( "#ffffff" );
+						
+						item.setMargin( 8 );
+						item.setFont( "Sans Bold 12" );
+						item.setText( textValue );
+						
+						.columnHeaders[ ] = item;
+						
+						.columnCount++;
+						.tableColumnFound = true;
+					}
+				};
+			}
+			
+			private function processTableRows( array &children )
+			{
+				children.each( ) using ( child )
+				{
+					string childName = child.getElementName( );
+					if( childName == "TableRow" )
+					{
+						array tableRowChildren = child.getChildren( );
+						tableRowChildren.each( ) using ( tableRowChild )
+						{
+							string tableRowChildName = tableRowChild.getElementName( );
+							if( tableRowChildName == "TableColumn" )
+							{
+								array tableColumnChildren;
+								number padding = 0;
+								string textFont;
+								string textColor;
+								
+								if( not .tableColumnFound and not .tableRowFound )
+									.columnCount++;
+								
+								if( tableRowChild.hasAttribute( "BackgroundColor" ) )
+								{
+									string color = tableRowChild.getAttributeByName( "BackgroundColor" );
+									.columnBackgroundColors[ ] = .getRGBColor( color );
+								}
+								else
+									.columnBackgroundColors[ ] = .getRGBColor( "#ffffff" );
+								
+								if( tableRowChild.hasAttribute( "Padding" ) )
+								{
+									string paddingAttribute = tableRowChild.getAttributeByName( "Padding" );
+									padding = paddingAttribute.toNumber( );
+								}
+								
+								if( tableRowChild.hasAttribute( "TextFont" ) )
+									textFont = tableRowChild.getAttributeByName( "TextFont" );
+								
+								if( tableRowChild.hasAttribute( "TextColor" ) )
+									textColor = tableRowChild.getAttributeByName( "TextColor" );
+								
+								tableColumnChildren = tableRowChild.getChildren( );
+								tableColumnChildren.each( ) using ( tableColumnChild )
+								{
+									string tableRowChildName = tableRowChild.getElementName( );
+									number margin = 0;
+									number paddingWithMargin = 0;
+									
+									if( tableColumnChild.hasAttribute( "Margin" ) )
+									{
+										string marginAttribute = tableColumnChild.getAttributeByName( "Margin" );
+										margin = marginAttribute.toNumber( );
+									}
+									
+									margin = margin + padding;
+									tableColumnChild.setAttribute( "Margin", "${margin}" );
+									
+									if( tableRowChildName == "Text" or tableRowChildName == "text" )
+									{
+										if( not tableColumnChild.hasAttribute( "Font" ) and textFont != "" )
+											tableColumnChild.setAttribute( "Font", textFont );
+										if( not tableColumnChild.hasAttribute( "Color" ) and textColor != "" )
+											tableColumnChild.setAttribute( "Color", textColor );
+									}
+									
+									.columnContent[ ] = tableColumnChild;
+								};
+							}
+						};
+						
+						if( not .tableRowFound )
+							.tableRowFound = true;
+					}
+				};
+			}
+		}
+		/**
+		 * @end
+		 */
+	}
+	/**
+	 * @end
+	 */
+}
+/**
+ * @end
+ */
+

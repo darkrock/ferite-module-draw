@@ -1,0 +1,2236 @@
+uses 'array';
+uses 'cairo';
+uses 'image';
+uses 'math';
+uses 'pango';
+
+/**
+ * @namespace EasyDraw
+ * @brief Contains classes for drawing images and documents
+ */
+namespace Draw
+{
+	/**
+	 * @variable SIZE_A4_PORTRAIT
+	 * @type number
+	 * @brief This is used to tell that the size should be A4 portrait
+	 */
+	final number SIZE_A4_PORTRAIT = 4;
+	
+	/**
+	 * @variable SIZE_A4_LANDSCAPE
+	 * @type number
+	 * @brief This is used to tell that the size should be A4 landscape
+	 */	
+	final number SIZE_A4_LANDSCAPE = 5;
+	
+	/**
+	 * @variable SIZE_LETTER_PORTRAIT
+	 * @type number
+	 * @brief This is used to tell that the size should be Letter portrait
+	 */
+	final number SIZE_LETTER_PORTRAIT = 43;
+	
+	/**
+	 * @variable SIZE_LETTER_LANDSCAPE
+	 * @type number
+	 * @brief This is used to tell that the size should Letter landscape
+	 */
+	final number SIZE_LETTER_LANDSCAPE = 44;
+	
+	/**
+	 * @class Position
+	 * @brief Describes a position in an image or document
+	 */
+	class Position
+	{
+		/**
+		 * @variable x
+		 * @type number
+		 * @brief The x position
+		 */
+		public number x;
+		
+		/**
+		 * @variable y
+		 * @type number
+		 * @brief The y position
+		 */
+		public number y;
+		
+		public function constructor( )
+		{
+			.x = 0;
+			.y = 0;
+		}
+		
+		/**
+		 * @function constructor
+		 * @declaration function constructor( number x, number y )
+		 * @brief Create a position with x and y as it's positions
+		 * @param number x the x position
+		 * @param number y the y position
+		 */
+		public function constructor( number x, number y )
+		{
+			.x = x;
+			.y = y;
+		}
+	}
+	/**
+	 * @end
+	 */
+	
+	/**
+	 * @class Color
+	 * @brief Describes a color in an image or document
+	 */
+	class Color
+	{
+		public number red;
+		public number green;
+		public number blue;
+		
+		/**
+		 * @function constructor
+		 * @declaration function constructor( number red, number green, number blue )
+		 * @param number red the amount of red (a value between 0 and 1)
+		 * @brief Create a new color with the specified amount of red, green, and blue 
+		 * @param number green the amount of green (a value between 0 and 1)
+		 * @param number blue the amount of blue (a value between 0 and 1) 
+		 */
+//		public function constructor( number red, number green, number blue )
+//		{
+//			.red = red;
+//			.green = green;
+//			.blue = blue;
+//		}
+		
+		public function constructor( number red, number green, number blue )
+		{
+			.red = red / 255.0;
+			.green = green / 255.0;
+			.blue = blue / 255.0;
+		}
+	}
+	/**
+	 * @end
+	 */
+	
+	/**
+	 * @class Base
+	 * @brief All types of images and documents extends this class
+	 */
+	abstract class Base
+	{
+		private object latestItemEndPosition;
+		protected number itemsRendered;
+		protected number width;
+		protected number height;
+		protected number marginTop;
+		protected number marginBottom;
+		protected number marginLeft;
+		protected number marginRight;
+		protected string background;
+		protected object context;
+		
+		protected function create( number width, number height )
+		{
+			if( not width.isDouble() )
+				width += 0.0;
+			
+			if( not height.isDouble() )
+				height += 0.0;
+			
+			.width = width;
+			.height = height;
+			
+			.marginTop = 20.0;
+			.marginBottom = 20.0;
+			.marginLeft = 20.0;
+			.marginRight = 20.0;
+			
+			.latestItemEndPosition = new Draw.Position( 0, 0 );
+			.itemsRendered = 0;
+		}
+		
+		protected function create( number size )
+		{
+			number width;
+			number height;
+			
+			// These are stolen from PDF::Writer
+			
+			switch( size )
+			{
+				case Draw.SIZE_LETTER_PORTRAIT:
+					width = 612.00;
+					height = 792.00;
+					break;
+				case Draw.SIZE_LETTER_LANDSCAPE:
+					width = 792.00;
+					height = 612.00;
+					break;
+				case Draw.SIZE_A4_LANDSCAPE:
+					width = 841.89;
+					height = 595.28;
+					break;	
+				case Draw.SIZE_A4_PORTRAIT:
+				default:
+					width = 595.28;
+					height = 841.89;
+			}
+			
+			.create( width, height );
+		}
+		
+		/**
+		 * @function getWidth
+		 * @declaration function getWidth( )
+		 * @brief Get the width of the image or document
+		 * @return The width of the image or document
+		 */
+		public function getWidth( )
+			return .width;
+		
+		/**
+		 * @function getHeight
+		 * @declaration function getHeight( )
+		 * @brief Get the height of the document
+		 * @return The height of the document
+		 */
+		public function getHeight( )
+			return .height;
+		
+		/**
+		 * @function setMargin
+		 * @declaration function setMargin( number margin )
+		 * @brief Set the top, bottom, left and right margin
+		 * @param number margin the top, bottom, left and right margin
+		 */
+		public function setMargin( number margin )
+		{
+			.setMarginTop( margin );
+			.setMarginBottom( margin );
+			.setMarginLeft( margin );
+			.setMarginRight( margin );
+		}
+		
+		/**
+		 * @function setMarginTop
+		 * @declaration function setMarginTop( number marginTop )
+		 * @brief Set the top margin for the image or document
+		 * @param number marginTop The top margin
+		 */
+		public function setMarginTop( number marginTop )
+		{
+			.marginTop = marginTop;
+			if( .itemsRendered == 0 )
+				.latestItemEndPosition.y = .marginTop;
+		}
+		
+		/**
+		 * @function getMarginTop
+		 * @declaration function getMarginTop( )
+		 * @brief Get the top margin
+		 * @return The top margin
+		 */
+		public function getMarginTop( )
+			return .marginTop;
+		
+		/**
+		 * @function setMarginBottom
+		 * @declaration function setMarginBottom( number marginBottom )
+		 * @brief Set the bottom margin for the image or document
+		 * @param number marginBottom The bottom margin
+		 */
+		public function setMarginBottom( number marginBottom )
+			.marginBottom = marginBottom;
+				
+		/**
+		 * @function getMarginBottom
+		 * @declaration function getMarginBottom( )
+		 * @brief Get the bottom margin
+		 * @return The bottom margin
+		 */
+		public function getMarginBottom( )
+			return .marginBottom;
+		
+		/**
+		 * @function setMarginLeft
+		 * @declaration function setMarginLeft( number numberLeft )
+		 * @brief Set the left margin for the image or document
+		 * @param number marginLeft The left margin
+		 */
+		public function setMarginLeft( number marginLeft )
+			.marginLeft = marginLeft;
+				
+		/**
+		 * @function getMarginLeft
+		 * @declaration function getMarginLeft( )
+		 * @brief Get the left margin
+		 * @return The left margin
+		 */
+		public function getMarginLeft( )
+			return .marginLeft;
+		
+		/**
+		 * @function setMarginRight
+		 * @declaration function setMarginRight( number marginRight )
+		 * @brief set the right margin for the image or document
+		 * @param number marginRight The right margin
+		 */
+		public function setMarginRight( number marginRight )
+			.marginRight = marginRight;
+				
+		/**
+		 * @function getMarginRight
+		 * @declaration function getMarginRight( )
+		 * @brief Get the right margin
+		 * @return The right margin
+		 */
+		public function getMarginRight( )
+			return .marginRight;
+		
+		/**
+		 * @function renderItem
+		 * @declaration function renderItem( object item )
+		 * @brief Render an item to the image or document
+		 * @param object item the item that should be rendered
+		 */
+		public function renderItem( object item )
+		{
+			object limitPosition = new Draw.Position( );
+			limitPosition.x = .width - .marginRight;
+			limitPosition.y = .height - .marginBottom;
+			
+			if( not item.hasFixedPosition( ) )
+			{
+				object beginPosition = new Draw.Position( );
+				object endPosition = new Draw.Position( );
+				
+				beginPosition.x = .marginLeft;
+				
+				if( .itemsRendered == 0 )
+					beginPosition.y = .marginTop;
+				else
+					beginPosition.y = .latestItemEndPosition.y;
+				
+				endPosition = item.render( self, .context, beginPosition, limitPosition );
+				
+				.latestItemEndPosition = endPosition;
+			}
+			else
+			{
+				item.render( self, .context, limitPosition );
+			}
+		}
+		
+		/**
+		 * @function renderItems
+		 * @declaration function renderItems( array items )
+		 * @brief Render an array of items
+		 * @param array items an array of items that should be rendered
+		 */
+		public function renderItems( array items ) {
+			items.each() using ( item ) {
+				.renderItem( item );
+			};
+		}
+		
+		protected function renderBackground( )
+		{
+			object backgroundSurface = new Cairo.ImageSurface( .background );
+			.context.setSourceSurface( backgroundSurface, 0, 0 );
+			.context.paint( );
+		}
+		
+		/**
+		 * @function setBackground
+		 * @declaration function setBackground( string background )
+		 * @brief Set the background for the image or document
+		 * @param string background the background
+		 */
+		public function setBackground( string background )
+		{
+			.background = background;
+			if( .itemsRendered == 0 )
+				.renderBackground( );
+		}
+		
+		/**
+		 * @function newPage
+		 * @declaration function newPage( )
+		 * @brief Begins a new page in a document
+		 */
+		public function newPage( );
+	}
+	/**
+	 * @end
+	 */
+	
+	/**
+	 * @class PDF
+	 * @extends Draw.Base
+	 * @brief A PDF document
+	 */
+	class PDF extends Draw.Base
+	{
+		private number pages;
+		
+		public function constructor( )
+		{
+			self( 'filename.pdf', Draw.SIZE_A4_PORTRAIT );
+		}
+		
+		public function constructor( string filename, number width, number height )
+		{
+			super.create( width, height );
+			.create( filename );
+		}
+		
+		/**
+		 * @function constructor
+		 * @declaration function constructor( string filename, number size )
+		 * @brief Create a new PDF document
+		 * @param string filename the filename for the new PDF document
+		 * @param number size the size type this document should use
+		 */
+		public function constructor( string filename, number size )
+		{
+			super.create( size );
+			.create( filename );
+		}
+		
+		private function create( string filename )
+		{
+			.context = new Cairo.Context( new Cairo.PDFSurface( filename, .width, .height ) );
+			.pages = 1;
+		}
+		
+		public function newPage( )
+		{
+			.context.showPage( );
+			.pages++;
+			if( .background )
+				.renderBackground( );
+		}
+	}
+	/**
+	 * @end
+	 */
+	
+	/**
+	 * @class PNG
+	 * @extends Draw.Base
+	 * @brief A PNG image
+	 */
+	class PNG extends Draw.Base
+	{
+		private object surface;
+		private string filename;
+		
+		public function constructor( )
+		{
+			self( 'filename.png', Draw.SIZE_A4_PORTRAIT );
+		}
+		
+		public function constructor( string filename, number width, number height )
+		{
+			super.create( width, height );
+			.create( filename );
+		}
+		
+		/**
+		 * @function constructor
+		 * @declaration function constructor( number pageType )
+		 * @brief Create a new PNG image
+		 * @param string filename the name of the PNG file
+		 * @param number size the size type this document should use
+		 */
+		public function constructor( string filename, number size )
+		{
+			super.create( size );
+			.create( filename );
+		}
+		
+		private function create( string filename )
+		{
+			.filename = filename;
+			.surface = new Cairo.ImageSurface( Cairo.FORMAT_ARGB32, .width, .height );
+			.context = new Cairo.Context( .surface );
+			.context.setSourceRGB( 1, 1, 1 );
+			.context.paint( );
+			.context.setSourceRGB( 0, 0, 0 );
+			.surface.writeToPNG( .filename );
+		}
+		
+		function renderItem( object item )
+		{
+			super.renderItem( item );
+			.surface.writeToPNG( .filename );
+		}
+	}
+	/**
+	 * @end
+	 */
+	
+	/**
+	 * @namespace Item
+	 * @brief Contains items that can be drawn to a PDF document
+	 * @warning An item that does not fit on the space it has to render
+	            itself on will not render itself to the document.
+	 */
+	namespace Item
+	{
+		/**
+		 * @class Item
+		 * @brief The base class for all items
+		 * @warning An item that does not fit on the space it has to render
+		            itself on will not render itself to the document.
+		 */
+		abstract class Item
+		{
+			protected boolean fixedPosition;
+			protected object beginPosition;
+			protected object backgroundColor;
+			protected number marginTop;
+			protected number marginBottom;
+			protected number marginLeft;
+			protected number marginRight;
+			
+			/**
+			 * @function setFixedPosition
+			 * @declaration function setFixedPosition( boolean fixedPosition )
+			 * @brief Set if the item has a fixed position in the document or not
+			 * @param boolean fixedPosition true or false
+			 */
+			public function setFixedPosition( boolean fixedPosition )
+				.fixedPosition = fixedPosition;
+			
+			/**
+			 * @function hasFixedPosition
+			 * @declaration function hasFixedPosition
+			 * @brief Check if te item has a fixed position or not
+			 * @return A boolean value. True if the item has ha fixed position
+			           false if it does not
+			 */
+			public function hasFixedPosition( )
+				return .fixedPosition;
+			
+			/**
+			 * @function setBeginPosition
+			 * @declaration function setBeginPosition
+			 * @brief Set the begin position for the item that is used if the item
+			          is set to have a fixed position
+			   @param object position A position object
+			 */
+			public function setBeginPosition( object position )
+				.beginPosition = position;
+			
+			/**
+			 * @function setBackgroundColor
+			 * @declaration function setBackgroundColor( object color )
+			 * @brief Set the background color for the item
+			 * @param object color an instance of Draw.Color object
+			 */
+			public function setBackgroundColor( object color)
+				.backgroundColor = color;
+			
+			/**
+			 * @function setMargin
+			 * @declaration function setMargin( number margin )
+			 * @brief Set the top, bottom, right and left margin
+			 * @param number margin the top, bottom, left and right margin
+			 */
+			public function setMargin( number margin )
+			{
+				.setMarginTop( margin );
+				.setMarginBottom( margin );
+				.setMarginLeft( margin );
+				.setMarginRight( margin );
+			}
+			
+			/**
+			 * @function setMarginTop
+			 * @declaration function setMarginTop( number marginTop )
+			 * @brief Set the top margin
+			 * @param number marginTop The top margin
+			 */
+			public function setMarginTop( number marginTop )
+				.marginTop = marginTop;
+			
+			/**
+			 * @function setMarginBottom
+			 * @declaration function setMarginBottom( number marginBottom )
+			 * @brief Set the bottom margin
+			 * @param number marginBottom The bottom margin
+			 */
+			public function setMarginBottom( number marginBottom )
+				.marginBottom = marginBottom;
+			
+			/**
+			 * @function setMarginLeft
+			 * @declaration function setMarginLeft( number marginLeft )
+			 * @brief Set the left margin
+			 * @param number marginLeft The left margin 
+			 */
+			public function setMarginLeft( number marginLeft )
+				.marginLeft = marginLeft;
+			
+			/**
+			 * @function setMarginRight
+			 * @declaration function setMarginRight( number marginRight )
+			 * @brief Set the right margin
+			 * @param number marginRight The right margin
+			 */
+			public function setMarginRight( number marginRight )
+				.marginRight = marginRight;
+			
+			/**
+			 * @function render
+			 * @declaration function render( object document, object context, object limitPosition );
+			 * @brief Render the item using the specified Cairo context with the set
+			          begin position as position this item should begin draw on
+			 * @param object document an instance of a Draw.Base object
+			 * @param object context the Cairo context that should be used to draw this item
+			 * @param object limitPosition the position this item is not allowed to exceed
+			 * return A Position object containing the end position of the item
+			 */
+			public function render( object document, object context, object limitPosition )
+			{
+				object beginPosition = new Draw.Position( 0, 0 );
+				
+				if( .beginPosition )
+					beginPosition = .beginPosition;
+				
+				return .render( document, context, beginPosition, limitPosition );
+			}
+			
+			/**
+			 * @function render
+			 * @declaration function render( object document, object context,
+			                                 object beginPosition, object limitPosition );
+			 * @brief Render the item using the specified Cairo context
+			 * @param object document an instance of a Draw.Base object
+			 * @param object context the Cairo context that should be used to draw this item
+			 * @param object beginPosition the position this item should begin draw on
+			 * @param object limitPosition the position this item is not allowed to exceed
+			 * return A Position object containing the end position of the item
+			 */
+			public function render( object document, object context,
+				object beginPosition, object limitPosition );
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class Text
+		 * @extends Draw.Item.Item
+		 * @brief An item used to draw text
+		 * @warning Text that does not fit on the space it has to render itself
+		            on will be cut so it does fit if autoNewPage is turned off.
+		 */
+		class Text extends Draw.Item.Item
+		{
+			private string text;
+			private string font;
+			private object color;
+			private boolean autoNewPage;
+			private number alignment;
+			private boolean justify;
+			boolean _rotate;
+			number _angle;
+			
+			public static final number ALIGN_LEFT = 0;
+			public static final number ALIGN_RIGHT = 1;
+			public static final number ALIGN_CENTER = 2;
+			
+			public constructor( )
+			{
+				.font = "Sans Regular 12";
+				.color = new Draw.Color( 0, 0, 0 );
+				.autoNewPage = false;
+				.alignment = Pango.ALIGN_LEFT;
+				.justify = false;
+				._rotate = false;
+				._angle = 0;
+			}
+			
+			/**
+			 * @function setText
+			 * @declaration function setText( string text )
+			 * @brief Set the text this item should draw to the document
+			 * @param string text The text
+			 */
+			public function setText( string text )
+				.text = text;
+			
+			function setText( number text )
+				.text = "" + text;
+			
+			/**
+			 * @function setFont
+			 * @declaration function setFont( string font )
+			 * @brief Set the font this text item should use
+			 * @description The font contains three parts. The font
+			 *              family, the font style and the font size.
+			 * @example <nl/><code><type>object</type> text = new Draw.Item.Text( );<nl/>
+			 *          text.setFontDescription( "Sans Regular 12" );</code><nl/>
+			 */
+			public function setFont( string font )
+				.font = font;
+			
+			/**
+			 * @function setColor
+			 * @declaration function setColor( object color )
+			 * @brief Set the text color for this item
+			 * @param object color an instance of Draw.Color object
+			 */
+			public function setColor( object color )
+				.color = color;
+			
+			/**
+			 * @function setAutoNewPage
+			 * @declaration function setAutoNewPage( boolean autoNewPage )
+			 * @brief Set if this item should automaticly create new pages if
+			          the text does not fit on the first page
+			 * @param boolean autoNewPage Auto create new pages or not
+			 * @description If automagic new page creation is off and the text is
+			                to big for the page, the text will be cut.
+			 */
+			public function setAutoNewPage( boolean autoNewPage )
+				.autoNewPage = autoNewPage;
+			
+			/**
+			 * @function setAlignment
+			 * @declaration function setAlignment( number alignment )
+			 * @brief Set the alignment of the text
+			 * @param number alignment Can be any of ALIGN_LEFT, ALIGN_RIGHT or
+			          ALIGN_CENTER.
+			 */
+			public function setAlignment( number alignment )
+			{
+				switch( alignment )
+				{
+					case Draw.Item.Text.ALIGN_CENTER:
+						.alignment = Pango.ALIGN_CENTER;
+						break;
+					case Draw.Item.Text.ALIGN_RIGHT:
+						.alignment = Pango.ALIGN_RIGHT;
+						break;
+					case Draw.Item.Text.ALIGN_LEFT:
+					default:
+						.alignment = Pango.ALIGN_LEFT;
+						break;
+				}
+			}
+			/**
+			 * @function setJustify
+			 * @declaration function setJustify( boolean justify )
+			 * @brief Set if the text should be justified or not
+			 * @param boolean justify True or false
+			 */
+			public function setJustify( boolean justify )
+				.justify = justify;
+			
+			function rotate( number degrees )
+			{
+				._rotate = true;
+				._angle = degrees * ( Math.pi( ) / 180 );
+			}
+			
+			/*
+			function getWidth( object canvas )
+			{
+				number width = 0;
+				object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, canvas.getWidth( ), canvas.getHeight( ) );
+				object context = new Cairo.Context( surface );
+				object layout = context.createPangoLayout( );
+				object iter;
+				
+				layout.setWidth( canvas.getWidth( ) * Pango.SCALE );
+				layout.setText( .text );
+				layout.setFontDescription( new Pango.FontDescription( .font ) );
+				layout.setAlignment( .alignment );
+				layout.setJustify( .justify );
+				iter = layout.getIter( );
+				
+				do
+				{
+					array lineExtents = iter.getLineExtents( );
+					number lineWidth = lineExtents['logical'].getX( ) / Pango.SCALE;
+					Console.println( lineExtents );
+					if( lineWidth > width )
+						width = lineWidth;
+				}
+				while( iter.nextLine( ) );
+				
+				return width;
+			}
+			*/
+			
+			public function render( object document, object context,
+				object beginPosition, object limitPosition )
+			{
+				object endPosition = new Draw.Position( );
+				object textBeginPosition = new Draw.Position( );
+				object textLimitPosition = new Draw.Position( );
+				object layout = context.createPangoLayout( );
+				number bodyWidth;
+				
+				endPosition.x = beginPosition.x + .marginTop + .marginBottom;
+				endPosition.y = beginPosition.y + .marginLeft + .marginRight;
+				
+				textBeginPosition.x = beginPosition.x + .marginLeft;
+				textBeginPosition.y = beginPosition.y + .marginTop;
+				
+				textLimitPosition.x = limitPosition.x - .marginRight;
+				textLimitPosition.y = limitPosition.y - .marginBottom;
+				
+				bodyWidth = limitPosition.x - beginPosition.x - .marginRight - .marginLeft;
+				
+				layout.setText( .text );
+				layout.setWidth( bodyWidth * Pango.SCALE );
+				layout.setFontDescription( new Pango.FontDescription( .font ) );
+				layout.setAlignment( .alignment );
+				layout.setJustify( .justify );
+				
+				context.setSourceRGB( .color.red, .color.green, .color.blue );
+				
+				endPosition = .renderText( document, context, layout, textBeginPosition,
+					textLimitPosition );
+				
+				return endPosition;
+			}
+			
+			private function renderText( object document, object context, object layout,
+				object beginPosition, object limitPosition )
+			{
+				object endPosition = new Draw.Position( beginPosition.x, beginPosition.y );
+				object iter = layout.getIter( );
+				object line;
+				object lineEndPosition = new Draw.Position( );
+				number prevBaseline = iter.getBaseline( ) / Pango.SCALE;
+				number baseline;
+				array yRange;
+				array lineExtents;
+				
+				context.save( );
+				
+				if( ._rotate )
+				{
+					context.translate( 0, document.getHeight( ) );
+					context.rotate( ._angle );
+					context.updatePangoLayout( layout );
+				}
+				
+				do
+				{
+					line = iter.getLine( );
+					yRange = iter.getLineYRange( );
+					lineExtents = iter.getLineExtents( );
+					
+					lineEndPosition.y = beginPosition.y + ( yRange['end'] / Pango.SCALE );
+					
+					if( limitPosition.y < lineEndPosition.y )
+					{
+						if( not .autoNewPage )
+							break;
+						document.newPage( );
+						beginPosition.y = document.getMarginTop( ) - prevBaseline;
+					}
+					
+					baseline = iter.getBaseline( ) / Pango.SCALE;
+					
+					context.moveTo( ( beginPosition.x + ( lineExtents['logical'].getX( ) / Pango.SCALE ) ),
+						beginPosition.y + baseline );
+					context.showPangoLayoutLine( line );
+					
+					prevBaseline = baseline;
+					
+					lineEndPosition.x = beginPosition.x
+						+ ( lineExtents['logical'].getX( ) / Pango.SCALE )
+						+ .marginRight;
+					
+					if( lineEndPosition.x > endPosition.x )
+						endPosition.x = lineEndPosition.x;
+					
+					endPosition.y = beginPosition.y + baseline + .marginBottom;
+				}
+				while( iter.nextLine( ) );
+				
+				context.restore( );
+				
+				return endPosition;
+			}
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class Image
+		 * @extends Draw.Item.Item
+		 * @brief An item used to draw an image. The image will be resized to
+		          fit the space it has to render itself on.
+		 */
+		class Image extends Draw.Item.Item
+		{
+			private string file;
+			
+			/**
+			 * @function setImage
+			 * @declaration setImage( string image )
+			 * @brief Set the path to the image
+			 * @param string image An image
+			 */
+			public function setFile( string file )
+				.file = file;
+
+			public function render( object document, object context,
+				object beginPosition, object limitPosition )
+			{
+				object endPosition;
+				
+				object image;			
+				object surface;
+				
+				number maxXPos = limitPosition.x - .marginRight;
+				number maxYPos = limitPosition.y - .marginBottom;
+				
+				number beginXPos = beginPosition.x + .marginLeft;
+				number beginYPos = beginPosition.y + .marginTop;
+				
+				number scaleSize = 1.0;
+				
+				number itemEndXPos;
+				number itemEndYPos;
+				
+				if( .file == "" )
+					return beginPosition;
+				
+				if( beginXPos >= maxXPos or beginYPos >= maxYPos )
+					return beginPosition;
+				
+				image = new Image( );
+				image.load( .file );
+				
+				surface = new Cairo.ImageSurface(
+					image.toARGBString( ),
+					Cairo.FORMAT_ARGB32,
+					image.getWidth( ),
+					image.getHeight( ),
+					image.getWidth( ) * 4 );
+				
+				itemEndXPos = beginXPos + image.getWidth() + .marginRight;
+				itemEndYPos = beginYPos + image.getHeight() + .marginBottom;
+				
+				if( itemEndXPos > maxXPos and itemEndYPos > maxYPos )
+				{
+					number widthScaleSize;
+					number heightScaleSize;
+					
+					widthScaleSize = ( maxXPos - beginXPos ) / image.getWidth( );
+					heightScaleSize = ( maxYPos - beginYPos ) / image.getHeight( );
+					
+					if( widthScaleSize < heightScaleSize )
+						scaleSize = widthScaleSize;
+					else
+						scaleSize = heightScaleSize;
+				}
+				else if( itemEndXPos  > maxXPos )
+					scaleSize = ( maxXPos - beginXPos ) / image.getWidth( );
+				else if( itemEndYPos > maxYPos )
+					scaleSize = ( maxYPos - beginYPos ) / image.getHeight( );
+				
+				context.save( );
+				context.scale( scaleSize, scaleSize );
+				context.setSourceSurface( surface, ( beginXPos / scaleSize ),
+					( beginYPos / scaleSize ) );
+				context.paint( );
+				context.restore( );
+				
+				itemEndXPos = beginXPos + ( image.getWidth( ) * scaleSize ) + .marginRight;
+				itemEndYPos = beginYPos + ( image.getHeight( ) * scaleSize ) + .marginBottom;
+				
+				endPosition = new Draw.Position( );
+				endPosition.x = itemEndXPos;
+				endPosition.y = itemEndYPos;
+				
+				return endPosition;
+			}
+		}
+		/**
+		 * @end
+		 */
+		
+		abstract class Chart extends Draw.Item.Item
+		{
+			protected number width;
+			protected number height;
+			protected number xScaleValue;
+			protected number yScaleValue;
+			protected array xValues;
+			protected array yValues;
+			protected number highestXValue;
+			protected number highestYValue;
+			number longestXValue;
+			number longestYValue;
+			protected boolean dataSet;
+			protected number markers;
+			protected number markerIncrement;
+			protected number gridIncrement;
+			protected object graphBeginPosition;
+			protected object graphEndPosition;
+			array colors;
+			
+			public function constructor( )
+			{
+				.dataSet = false;
+				.graphBeginPosition = new Draw.Position( 0, 0 );
+				.graphEndPosition = new Draw.Position( 0, 0 );
+				.colors = [
+						new Draw.Color( 255, 153, 0 ),
+						new Draw.Color( 0, 102, 153 ),
+						new Draw.Color( 102, 0, 153 ),
+						new Draw.Color( 153, 0, 102 ),
+						new Draw.Color( 164, 164, 75 ),
+						new Draw.Color( 173, 173, 173 ),
+						new Draw.Color( 255, 0, 0 ),
+						new Draw.Color( 0, 255, 0 ),
+						new Draw.Color( 0, 0, 255 ),
+						new Draw.Color( 255, 255, 0 ),
+						new Draw.Color( 255, 0, 255 ),
+						new Draw.Color( 0, 255, 255 )
+					];
+			}
+			
+			public function setData( array data )
+			{
+				data.each() using ( _data )
+				{
+					string xValue = "" + _data['key'][0];
+					.xValues[] = xValue;
+					
+					if( xValue.length( ) > .longestXValue )
+						.longestXValue = xValue.length( );
+					
+					_data['value'].map() using ( key, value )
+					{
+						if( value isa array )
+						{
+							value.map() using ( _key, _value )
+							{
+								if( not .yValues.keyExists( _key ) )
+									.yValues[_key] = [];
+								
+								.yValues[_key][] = _value;
+								
+								if( _value > .highestValue )
+									.highestValue = _value;
+							};
+						}
+						else
+						{
+							string valueAsString = "" + value;
+							
+							.yValues[] = value;
+							
+							if( value > .highestYValue )
+								.highestYValue = value;
+							
+							if( valueAsString.length( ) > .longestYValue )
+								.longestYValue = valueAsString.length( );
+						}
+					};
+				};
+				
+				.dataSet = true;
+			}
+			
+			public function x( number x )
+			{
+				return x / .xScaleValue;
+			}
+			
+			public function y( number y )
+			{
+				return .height - ( y / .yScaleValue );
+			}
+			
+			protected function setup( object canvas, object context,
+				object beginPosition, object endPosition )
+			{
+				number xValueLength = 60;
+				number yValueLength = 30;
+				number valueHeight = 16;
+				number highestYValue = .highestYValue;
+				
+				/*
+				.xValues.each( ) using ( value )
+				{
+					object text = new Draw.Item.Text( );
+					number textWidth = 0;
+					text.setText( value );
+					text.setFont( "Sans 8" );
+					textWidth = text.getWidth( canvas );
+					Console.println( textWidth );
+					if( textWidth > xValueLength )
+						xValueLength = textWidth;
+				};
+				
+				.yValues.each( ) using ( value )
+				{
+					object text = new Draw.Item.Text( );
+					number textWidth = 0;
+					text.setText( value );
+					text.setFont( "Sans 8" );
+					textWidth = text.getWidth( canvas );
+					if( textWidth > yValueLength )
+						yValueLength = textWidth;
+				};
+				*/
+				
+				.width = endPosition.x - beginPosition.x - .marginLeft - .marginRight - yValueLength;
+				.height = endPosition.y - beginPosition.y - .marginTop - .marginBottom - xValueLength;
+				
+				.graphBeginPosition.x = beginPosition.x + .marginLeft + yValueLength;
+				.graphBeginPosition.y = beginPosition.y + .marginTop;
+				
+				.graphEndPosition.x = endPosition.x - .marginRight;
+				.graphEndPosition.y = endPosition.y - .marginBottom - xValueLength;
+				
+				.markers = .height / valueHeight;
+				.markers = .markers.floor( );
+				.markers = .markers.round( );
+				
+				if( highestYValue > 0 )
+				{
+					while( highestYValue % 2 != 0 )
+						highestYValue++;
+					
+					if( .markers > highestYValue )
+						.markers = .highestYValue;
+					
+					.markerIncrement = highestYValue / .markers;
+					.markerIncrement = .markerIncrement.ceil( );
+					.markerIncrement = .markerIncrement.round( );
+					
+					while( ( .markers * .markerIncrement ) < highestYValue )
+						.markerIncrement++;
+					
+					while( ( ( .markers - 1 ) * .markerIncrement ) > highestYValue )
+						.markers--;
+				}
+				else
+				{
+					.markerIncrement = 1;
+					.markers = 2;
+				}
+				
+				.yScaleValue = ( .markers * .markerIncrement ) / .height;
+				
+				.gridIncrement = ( .markerIncrement + 0.0 ) / 2;
+				
+				/*
+				if( ( .gridIncrement / .yScaleValue ) >= verticalMarkerSpaceNeededInPixels and
+					( .markers * ( .gridIncrement / .yScaleValue ) ) <= .height )
+				{
+					.markers *= 2;
+					.markerIncrement = .gridIncrement;
+				}
+				*/
+			}
+			
+			function drawYAxis( object document, object context,
+				object beginPosition, object endPosition )
+			{
+				{
+					number horizontalGridLines = .markers * 2;
+					
+					for( number i = 0; i <= horizontalGridLines; i++ )
+					{
+						object line = new Draw.Item.Shape.Line( );
+						object lineBeginPosition = new Draw.Position( );
+						object lineEndPosition = new Draw.Position( );
+						lineBeginPosition.x = beginPosition.x;
+						lineBeginPosition.y = beginPosition.y + .y( .gridIncrement * i );
+						lineEndPosition.x = endPosition.x;
+						lineEndPosition.y = beginPosition.y + .y( .gridIncrement * i );
+						line.setColor( new Draw.Color( 230, 230, 235 ) );
+						line.render( document, context, lineBeginPosition, lineEndPosition );
+					}
+				}
+				
+				{
+					object line = new Draw.Item.Shape.Line( );
+					object lineBeginPosition = new Draw.Position( );
+					object lineEndPosition = new Draw.Position( );
+					lineBeginPosition.x = beginPosition.x;
+					lineBeginPosition.y = beginPosition.y;
+					lineEndPosition.x = beginPosition.x;
+					lineEndPosition.y = endPosition.y;
+					line.render( document, context, lineBeginPosition, lineEndPosition );
+					
+					for( number i = 0; i <= .markers; i++ )
+					{
+						number marker = .markerIncrement * i;
+						
+						object text = new Draw.Item.Text( );
+						object textBeginPosition = new Draw.Position( );
+						object textEndPosition = new Draw.Position( );
+						
+						textBeginPosition.x = beginPosition.x - 55;
+						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - 9.5;
+						textEndPosition.x = beginPosition.x - 5;
+						textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - 9.5 + 19;
+						
+						text.setText( "${marker}" );
+						text.setFont( "Sans 8" );
+						text.setAlignment( Draw.Item.Text.ALIGN_RIGHT );
+						text.render( document, context, textBeginPosition, textEndPosition );
+					}
+				}
+			}
+		}
+		
+		class LinesChart extends Draw.Item.Chart
+		{
+			function drawXAxis( object document, object context,
+				object beginPosition, object endPosition )
+			{
+				{
+					number verticalGridLines = .xValues.size( );
+					
+					for( number i = 0; i <= verticalGridLines; i++ )
+					{
+						object line = new Draw.Item.Shape.Line( );
+						object lineBeginPosition = new Draw.Position( );
+						object lineEndPosition = new Draw.Position( );
+						lineBeginPosition.x = beginPosition.x + .x( i );
+						lineBeginPosition.y = beginPosition.y;
+						lineEndPosition.x = beginPosition.x + .x( i );;
+						lineEndPosition.y = endPosition.y;
+						line.setColor( new Draw.Color( 230, 230, 235 ) );
+						line.render( document, context, lineBeginPosition, lineEndPosition );					
+					}
+				}
+				
+				{
+					object line = new Draw.Item.Shape.Line( );
+					object lineBeginPosition = new Draw.Position( );
+					object lineEndPosition = new Draw.Position( );
+					lineBeginPosition.x = beginPosition.x;
+					lineBeginPosition.y = endPosition.y;
+					lineEndPosition.x = endPosition.x;
+					lineEndPosition.y = endPosition.y;
+					line.render( document, context, lineBeginPosition, lineEndPosition );
+					
+					.xValues.eachWithIndex() using ( xValue, index )
+					{
+						object text = new Draw.Item.Text( );
+						object textBeginPosition = new Draw.Position( );
+						object textEndPosition = new Draw.Position( );
+						
+						textBeginPosition.x = 2;
+						textBeginPosition.y = beginPosition.x + .x( index + 1 ) - 8;
+						//textEndPosition.x = endPosition.y;
+						textEndPosition.x = 70;
+						textEndPosition.y = endPosition.x;
+						
+						text.setText( xValue );
+						text.setFont( "Sans 8" );
+						text.setAlignment( Draw.Item.Text.ALIGN_RIGHT );
+						text.rotate( 270 );
+						text.render( document, context, textBeginPosition, textEndPosition );
+					};
+				}
+			}
+			
+			public function render( object document, object context,
+				object beginPosition, object limitPosition )
+			{
+				number valuesCount = .xValues.size( );
+				array positions = [];
+				number positionsCount = 0;
+				
+				.setup( document, context, beginPosition, limitPosition );
+				.xScaleValue = ( .xValues.size( ) + 1 ) / .width;
+				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
+				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
+				
+				for( number i = 0; i < valuesCount; i++ )
+				{
+					number realX = i + 1;
+					number realY = .yValues[i];
+					
+					object position = new Draw.Position( );
+					position.x = .graphBeginPosition.x + .x( realX );
+					position.y = .graphBeginPosition.y + .y( realY );
+					
+					positions[] = position;
+				}
+				
+				positionsCount = positions.size( );
+				
+				positions.eachWithIndex( ) using ( beginPosition, index )
+				{
+					if( index + 1 <= positionsCount - 1 )
+					{
+						object endPosition = positions[index+1];
+						object line = new Draw.Item.Shape.Line( );
+						line.setColor( .colors[0] );
+						line.render( document, context, beginPosition, endPosition );
+					}
+				};
+				
+				return limitPosition;
+			}
+		}
+		
+		class BarsChart extends Draw.Item.Chart
+		{
+			function drawXAxis( object document, object context,
+				object beginPosition, object endPosition )
+			{
+				{
+					number verticalGridLines = ( .xValues.size( ) * 2 ) + 1;
+					
+					for( number i = 0; i <= verticalGridLines; i++ )
+					{
+						object line = new Draw.Item.Shape.Line( );
+						object lineBeginPosition = new Draw.Position( );
+						object lineEndPosition = new Draw.Position( );
+						lineBeginPosition.x = beginPosition.x + .x( i );
+						lineBeginPosition.y = beginPosition.y;
+						lineEndPosition.x = beginPosition.x + .x( i );;
+						lineEndPosition.y = endPosition.y;
+						line.setColor( new Draw.Color( 230, 230, 235 ) );
+						line.render( document, context, lineBeginPosition, lineEndPosition );					
+					}
+				}
+				
+				{
+					object line = new Draw.Item.Shape.Line( );
+					object lineBeginPosition = new Draw.Position( );
+					object lineEndPosition = new Draw.Position( );
+					lineBeginPosition.x = beginPosition.x;
+					lineBeginPosition.y = endPosition.y;
+					lineEndPosition.x = endPosition.x;
+					lineEndPosition.y = endPosition.y;
+					line.render( document, context, lineBeginPosition, lineEndPosition );
+					
+					.xValues.eachWithIndex() using ( xValue, index )
+					{
+						object text = new Draw.Item.Text( );
+						object textBeginPosition = new Draw.Position( );
+						object textEndPosition = new Draw.Position( );
+						
+						textBeginPosition.x = 2;
+						textBeginPosition.y = beginPosition.x + .x( index + 1 + ( index * 1 ) );
+						
+						//textEndPosition.x = endPosition.y;
+						textEndPosition.x = 70;
+						textEndPosition.y = endPosition.x;
+						
+						text.setText( xValue );
+						text.setFont( "Sans 8" );
+						text.setAlignment( Draw.Item.Text.ALIGN_RIGHT );
+						text.rotate( 270 );
+						text.render( document, context, textBeginPosition, textEndPosition );
+					};
+				}
+			}
+			
+			function render( object document, object context,
+				object beginPosition, object limitPosition )
+			{
+				.setup( document, context, beginPosition, limitPosition );
+				.xScaleValue = ( ( .xValues.size( ) * 2 ) + 1 ) / .width;
+				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
+				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
+				
+				for( number i = 0; i < .xValues.size( ); i++ )
+				{
+					//number realX = .xValues[i];
+					number realX = i + 1 + i;
+					number realY = .yValues[i];
+					
+					object rectangle = new Draw.Item.Shape.Rectangle( );
+					object rectangleBeginPosition = new Draw.Position( );
+					object rectangleEndPosition = new Draw.Position( );
+					//position.x = beginPosition.x + .x( realX );
+					//position.y = beginPosition.y + .y( realY );
+					rectangleBeginPosition.x = .graphBeginPosition.x + .x( realX );
+					rectangleBeginPosition.y = .graphBeginPosition.y + .y( realY );
+					
+					rectangleEndPosition.x = .graphBeginPosition.x + .x( realX + 1 );
+					rectangleEndPosition.y = .graphEndPosition.y - 1;
+					
+					rectangle.setFilled( true );
+					rectangle.setColor( .colors[0] );
+					
+					rectangle.render( document, context, rectangleBeginPosition, rectangleEndPosition );
+				}
+				
+				return limitPosition;
+			}
+		}
+		
+		/**
+		 * @class Container
+		 * @extends Draw.Item.Item
+		 * @brief An item that hold other items
+		 */
+		class Container extends Draw.Item.Item
+		{
+			protected array items;
+			protected array columnBackgroundColors;
+			protected number columns;
+			protected number borderWidth;
+			protected object borderColor;
+			
+			public function constructor( )
+			{
+				.items = [ ];
+				.columns = 1;
+				.columnBackgroundColors = [ ];
+				.borderWidth = 1;
+				.borderColor = new Draw.Color( 0, 0, 0 );
+			}
+			
+			/**
+			 * @function renderItem
+			 * @declaration function renderItem( object item )
+			 * @brief Add an item to the container
+			 * @param object item the item to add
+			 */
+			public function renderItem( object item )
+				.items[ ] = item;
+			
+			/**
+			 * @function setColumns
+			 * @declaration	function setColumns( number columns )
+			 * @brief Set the number of columns this container have
+			 * @param number columns the number of columns
+			 */
+			public function setColumns( number columns )
+				.columns = columns;
+			
+			/**
+			 * @function setColumnBackgroundColors
+			 * @declaration function setColumnBackgroundColors( array backgroundColors )
+			 * @brief Set the background colors for the columns
+			 * @param array backgroundColors an array of colors in hexadecimal values
+			 */
+			public function setColumnBackgroundColors( array backgroundColors )
+			{
+				backgroundColors.eachWithIndex( ) using ( value, index )
+				{
+					number num = index + 1;
+					.columnBackgroundColors[ "${num}" ] = value;
+				};
+			}
+			/**
+			 * @function setBorderWidth
+			 * @declaration function setBorderWidth( number borderWidth )
+			 * @brief Set the width of the border around the columns
+			 * @param number borderWidth the width of the border
+			 */
+			public function setBorderWidth( number borderWidth )
+				.borderWidth = borderWidth;
+			
+			/**
+			 * @function setBorderColor
+			 * @declaration function setBorderColor( object color )
+			 * @brief Set the color of the border
+			 * @param object color an instance of Draw.Color object
+			 */
+			public function setBorderColor( object color )
+				.borderColor = color;
+			
+			public function render( object document, object context,
+				object beginPosition, object limitPosition )
+			{
+				object endPosition = new Draw.Position( beginPosition.x, beginPosition.y );
+				object surroundingRectangle = new Draw.Item.Shape.Rectangle( );
+				object latestItemEndPosition = new Draw.Position( );
+				object itemBeginPosition = new Draw.Position( );
+				object itemLimitPosition = new Draw.Position( );
+				object imageSurface;
+				object imageContext;
+				number itemsSize = .items.size( );
+				number totalWidth;
+				number itemWidth;
+				number columnNum = 1;
+				number columnYPos;
+				array columnBeginPositions = [ ];
+				array columnItems = [ ];
+				array itemLimitPositions = [ ];
+				
+				if( itemsSize == 0 )
+					return beginPosition;
+				
+				imageSurface = new Cairo.ImageSurface( Cairo.FORMAT_ARGB32,
+					document.getWidth( ), document.getHeight( ) );
+				imageContext = new Cairo.Context( imageSurface );
+				
+				totalWidth = ( limitPosition.x - .marginRight )
+					- ( beginPosition.x + .marginLeft );
+				itemWidth = totalWidth / .columns;
+				
+				latestItemEndPosition.y = beginPosition.y + .marginTop;
+				columnYPos = latestItemEndPosition.y;
+				itemLimitPosition.y = limitPosition.y - .marginBottom;
+				
+				.items.eachWithIndex( ) using ( item, itemsIndex )
+				{
+					if( columnNum > .columns )
+					{
+						columnNum = 1;
+						itemBeginPosition.x = beginPosition.x + .marginLeft;
+						columnYPos = endPosition.y;
+						columnBeginPositions = [ ];
+						columnItems = [ ];
+						itemLimitPositions = [ ];
+					}
+					else
+						itemBeginPosition.x = ( beginPosition.x + .marginLeft )
+							+ ( itemWidth * ( columnNum - 1 ) );
+					
+					itemBeginPosition.y = columnYPos;
+					itemLimitPosition.x = ( beginPosition.x + .marginLeft )
+						+ ( itemWidth * columnNum );
+					
+					latestItemEndPosition = item.render( document, imageContext,
+						itemBeginPosition, itemLimitPosition );
+					
+					endPosition.x = latestItemEndPosition.x;
+					if( latestItemEndPosition.y > endPosition.y )
+						endPosition.y = latestItemEndPosition.y;
+					
+					columnBeginPositions[ ] = new Draw.Position( itemBeginPosition.x, itemBeginPosition.y );
+					itemLimitPositions[ ] = new Draw.Position( itemLimitPosition.x, itemLimitPosition.y );
+					columnItems[ ] = item;
+					
+					// If this is the last column in the row the borders are
+					// drawn around the columns, the background color and then
+					// the item itself.
+					if( columnNum == .columns or itemsIndex == ( itemsSize - 1 ) )
+					{
+						columnBeginPositions.eachWithIndex( ) using ( columnBeginPosition, index )
+						{
+							object item = columnItems[ index ];
+							object currentItemLimitPosition = itemLimitPositions[ index ];
+							object backgroundRectangle = new Draw.Item.Shape.Rectangle( );
+							object borderRectangle = new Draw.Item.Shape.Rectangle( );
+							number height = endPosition.y - columnBeginPosition.y;
+							number num = index + 1;
+															
+							borderRectangle.setColor( .borderColor );
+							borderRectangle.setLineWidth( .borderWidth );
+							borderRectangle.setWidth( itemWidth );
+							borderRectangle.setHeight( height );
+							borderRectangle.setBeginPosition( columnBeginPosition );
+							borderRectangle.render( document, context, limitPosition );
+							
+							if( .columnBackgroundColors.keyExists( "${num}" ) )
+							{
+								object bgColor = .columnBackgroundColors[ "${num}" ];
+								backgroundRectangle.setFilled( true );
+								backgroundRectangle.setWidth( itemWidth );
+								backgroundRectangle.setHeight( height );
+								backgroundRectangle.setBeginPosition( columnBeginPosition );
+								backgroundRectangle.setColor( bgColor );	
+								backgroundRectangle.render( document, context, limitPosition );
+							}
+							
+							item.render( document, context, columnBeginPosition,
+								currentItemLimitPosition );
+						};
+					}
+					
+					columnNum++;
+				};
+				
+				// Draw a surrounding rectangle to make the border a little less ugly
+				surroundingRectangle.setLineWidth( .borderWidth );
+				surroundingRectangle.setColor( .borderColor );
+				surroundingRectangle.render( document, context,
+					new Draw.Position( beginPosition.x + .marginLeft, beginPosition.y + .marginTop ),
+					new Draw.Position( limitPosition.x - .marginRight, endPosition.y ) );
+				
+				endPosition.y = endPosition.y + .marginBottom;
+				
+				return endPosition;
+			}
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @namespace Shape
+		 * @brief Contains shapes like lines, rectangles and circles
+		 */
+		namespace Shape
+		{
+			/**
+			 * @class Shape
+			 * @extends Draw.Item.Item
+			 * @brief An item describing the basics of a shape
+			 */
+			abstract class Shape extends Draw.Item.Item
+			{
+				protected object color;
+				protected number lineWidth;
+				
+				/**
+				 * @function setColor
+				 * @declaration function setColor( object color )
+				 * @brief Set the color for the shape
+				 * @param object color an instance of a Draw.Color object
+				 */
+				public function setColor( object color )
+					.color = color;
+				
+				/**
+				 * @function setLineWidth
+				 * @declaration function setLineWidth( number lineWidth )
+				 * @brief Set the line width of the shape
+				 * @param number lineWidth the width of the shape's lines
+				 */
+				public function setLineWidth( number lineWidth )
+					.lineWidth = lineWidth;
+			}
+			/**
+			 * @end
+			 */
+			
+			/**
+			 * @class Line
+			 * @extends Draw.Item.Shape.Shape
+			 * @brief A line
+			 */
+			class Line extends Draw.Item.Shape.Shape
+			{
+				private object endPosition;
+				
+				public function constructor( )
+				{
+					.beginPosition = null;
+					.endPosition = null;
+					.color = new Draw.Color( 0, 0, 0 );
+					.lineWidth = 1;
+				}
+				
+				/**
+				 * @function setEndPosition
+				 * @declaration function setEndPosition( object position )
+				 * @brief Set the position the line should end on
+				 * @param object position the end position for the line
+				 */
+				public function setEndPosition( object position )
+					.endPosition = position;
+				
+				public function render( object document, object context, object limitPosition )
+				{
+					object beginPosition = new Draw.Position( 0, 0 );
+					object endPosition = new Draw.Position( limitPosition.x, limitPosition.y );
+					
+					if( .beginPosition )
+						beginPosition = .beginPosition;
+					
+					if ( .endPosition )
+						endPosition = .endPosition;
+					
+					return .render( document, context, beginPosition, endPosition );
+				}
+				
+				public function render( object document, object context, object beginPosition, object limitPosition )
+				{
+					object endPosition;
+					
+					context.setSourceRGB( .color.red, .color.green, .color.blue );
+					context.setLineWidth( .lineWidth );
+					context.moveTo( beginPosition.x + .marginLeft, beginPosition.y + .marginTop );
+					context.lineTo( limitPosition.x - .marginRight, limitPosition.y + .marginTop );
+					context.stroke( );
+					
+					endPosition = new Draw.Position( );
+					endPosition.x = limitPosition.x;
+					endPosition.y = beginPosition.y + .marginBottom + .lineWidth;
+					
+					return endPosition;
+				}
+			}
+			/**
+			 * @end
+			 */
+			
+			/**
+			 * @class Rectangle
+			 * @extends Draw.Item.Shape.Shape
+			 * @brief A rectangle
+			 */
+			class Rectangle extends Draw.Item.Shape.Shape
+			{
+				protected number width;
+				protected number height;
+				protected boolean filled;
+				
+				public function constructor( )
+				{
+					.beginPosition = null;
+					.color = new Draw.Color( 0, 0, 0 );
+					.lineWidth = 1;
+					.width = -1;
+					.height = -1;
+					.filled = false;
+				}
+				
+				/**
+				 * @function setWidth
+				 * @declaration setWidth( number width )
+				 * @brief Set the width of the rectangle
+				 * @param number width the width of the rectangle
+				 */
+				public function setWidth( number width )
+					.width = width;
+				
+				/**
+				 * @function setHeight
+				 * @declaration function setHeight( number height )
+				 * @brief Set the height of the rectangle
+				 * @param object height the height of the rectangle
+				 */
+				public function setHeight( number height )
+					.height = height;
+				
+				/**
+				 * @function setFilled
+				 * @declaration function setFilled( boolean filled )
+				 * @brief Set if the rectangles should be filled or not
+				 * @param boolean filled true or false
+				 */
+				public function setFilled( boolean filled )
+					.filled = filled;
+				
+				public function render( object document, object context,
+					object beginPosition, object limitPosition )
+				{
+					number x;
+					number y;
+					number width;
+					number height;
+					object endPosition;
+					
+					x = beginPosition.x + .marginLeft;
+					y = beginPosition.y + .marginTop;
+					
+					if( .width != -1 )
+						width = .width;
+					else
+						width = ( limitPosition.x - .marginRight ) - beginPosition.x;
+					
+					if( .height != -1 )
+						height = .height;
+					else
+						height = ( limitPosition.y - .marginBottom ) - beginPosition.y;
+					
+					if( width == 0 and height == 0)
+						return beginPosition;
+					
+					context.setSourceRGB( .color.red, .color.green, .color.blue );
+					context.setLineWidth( .lineWidth );
+					
+					context.rectangle( x, y, width, height);
+					
+					if( .filled )
+						context.fill( );
+					else
+						context.stroke( );
+					
+					endPosition = new Draw.Position( );
+					endPosition.x = beginPosition.x + .marginLeft + width + .marginRight;
+					endPosition.y = beginPosition.y + .marginTop + height + .marginBottom;
+					
+					return endPosition;
+				}
+			}
+			/**
+			 * @end
+			 */
+			
+			/**
+			 * @class RectangleContainer
+			 * @extends Draw.Item.Container
+			 * @brief A rectangle that can contain other items
+			 */
+			class RectangleContainer extends Draw.Item.Container
+			{
+				private object rectangle;
+				private number width;
+				private number height;
+				
+				public function constructor( )
+				{
+					super( );
+					.borderWidth = 0;
+					.rectangle = new Draw.Item.Shape.Rectangle( );
+					.width = -1;
+					.height = -1;
+				}
+				
+				public function setBorderWidth( number borderWidth )
+					.rectangle.setLineWidth( borderWidth );
+				
+				/**
+				 * @function setLineWidth
+				 * @declaration function setLineWidth( number lineWidth )
+				 * @brief Set the line width for the rectangle
+				 * @param number lineWidth the width of the line
+				 */
+				public function setLineWidth( number lineWidth )
+					.rectangle.setLineWidth( lineWidth );
+				
+				/**
+				 * @function setColor
+				 * @declaration function setColor( object color )
+				 * @brief Set the color for the rectangle
+				 * @param object color an instance of a Draw.Color object
+				 */
+				public function setColor( object color )
+					.rectangle.setColor( color );
+				
+				/**
+				 * @function setFilled
+				 * @declaration function setFilled( boolean filled )
+				 * @brief Set if the rectangles should be filled or not
+				 * @param boolean filled true or false
+				 */
+				public function setFilled( boolean filled )
+					.rectangle.setFilled( filled );
+				
+				/**
+				 * @function setWidth
+				 * @declaration setWidth( number width )
+				 * @brief Set the width of the rectangle
+				 * @param number width the width of the rectangle
+				 */
+				public function setWidth( number width )
+					.width = width;
+				
+				/**
+				 * @function setHeight
+				 * @declaration function setHeight( number height )
+				 * @brief Set the height of the rectangle
+				 * @param object height the height of the rectangle
+				 */
+				public function setHeight( number height )
+					.height = height;
+				
+				public function render( object document, object context,
+					object beginPosition, object limitPosition )
+				{
+					number width;
+					number height;
+					object itemLimitPosition;
+					object lastItemEndPosition;
+					object endPosition;
+					
+					itemLimitPosition = new Draw.Position( );
+					itemLimitPosition.x = limitPosition.x; // - .marginRight;
+					itemLimitPosition.y = limitPosition.y; // - .marginBottom;
+					
+					if( .width != -1 )
+						itemLimitPosition.x = beginPosition.x + .marginLeft
+							+ .width + .marginRight;
+					
+					if( .height != -1 )
+						itemLimitPosition.y = beginPosition.y + .marginTop
+							+ .height + .marginBottom;
+					
+					lastItemEndPosition = super.render( document, context,
+						beginPosition, itemLimitPosition );
+					
+					if( .width == -1 )
+						width = limitPosition.x - beginPosition.x
+							- .marginLeft - .marginRight;
+					else
+						width = .width;
+					
+					if( .height == -1 )
+						height = ( lastItemEndPosition.y - .marginBottom )
+							- ( beginPosition.y + .marginTop );
+					else
+						height = .height;
+					
+					.rectangle.setWidth( width );
+					.rectangle.setHeight( height );
+					
+					.rectangle.setMarginTop( .marginTop );
+					.rectangle.setMarginBottom( .marginBottom );
+					.rectangle.setMarginLeft( .marginLeft );
+					.rectangle.setMarginRight( .marginRight );
+					
+					endPosition = .rectangle.render( document, context,
+						beginPosition, limitPosition );
+					
+					return endPosition;
+				}
+			}
+			/**
+			 * @end
+			 */
+			
+			/**
+			 * @class Circle
+			 * @extends Draw.Item.Shape.Shape
+			 * @brief A circle
+			 */
+			class Circle extends Draw.Item.Shape.Shape
+			{
+				private object centerPosition;
+				private number radius;
+				private boolean filled;
+				
+				/**
+				 * @function constructor
+				 * @declaration function constructor( number radius )
+				 * @brief Create a new circle with the specified radius
+				 * @param number radius the radius
+				 */
+				public function constructor( number radius )
+					.radius = radius;
+				
+				public function setBeginPosition( object position )
+				{
+					.beginPosition = position;
+					if( not .centerPosition )
+						.centerPosition = new Draw.Position( );
+					.centerPosition.x = .beginPosition.x + .radius;
+					.centerPosition.y = .beginPosition.y + .radius;
+				}
+				
+				/**
+				 * @function setCenterPosition
+				 * @declaration functions setCenterPosition( object position )
+				 * @brief Set the center position for the circle
+				 * @param object position the center position
+				 */
+				public function setCenterPosition( object position )
+				{
+					.centerPosition = position;
+					if( not .beginPosition )
+						.beginPosition = new Draw.Position( );
+					.beginPosition.x = .centerPosition.x - .radius;
+					.beginPosition.y = .centerPosition.y - .radius;
+				}
+				
+				/**
+				 * @function setFilled
+				 * @declaration function setFilled( boolean filled )
+				 * @brief Set if the rectangles should be filled or not
+				 * @param boolean filled true or false
+				 */
+				public function setFilled( boolean filled )
+					.filled = filled;
+				
+				public function setRadius( number radius )
+					.radius = radius;
+				
+				public function render( object document, object context,
+					object beginPosition, object limitPosition )
+				{
+					object endPosition;
+					
+					beginPosition.x = beginPosition.x + .marginLeft;
+					beginPosition.y = beginPosition.y + .marginTop;
+					
+					.setBeginPosition( beginPosition );
+
+					context.setSourceRGB( .color.red, .color.green, .color.blue );
+					context.setLineWidth( .lineWidth );
+					
+					context.arc( .centerPosition.x, .centerPosition.y,
+						.radius, 0, 360 * ( Math.pi( ) / 180 ) );
+					
+					if( .filled )
+						context.fill( );
+					else
+						context.stroke( );
+
+					endPosition = new Draw.Position( );
+					endPosition.x = .beginPosition.x + .marginLeft + ( .radius * 2 ) + .marginRight;
+					endPosition.y = .beginPosition.y + .marginTop + ( .radius * 2 ) + .marginBottom;
+					
+					return endPosition;
+				}
+			}
+			/**
+			 * @end
+			 */
+			
+			/**
+			 * @class Ellipse
+			 * @extends Draw.Item.Shape.Shape
+			 * @brief An ellipse
+			 */
+			class Ellipse extends Draw.Item.Shape.Shape
+			{
+				private object centerPosition;
+				private number width;
+				private number height;
+				private boolean filled;
+				
+				public function constructor( )
+				{
+					.beginPosition = null;
+					.centerPosition = null;
+					.width = -1;
+					.height = -1;
+					.filled = false;
+					.lineWidth = 1;
+					.color = new Draw.Color( 0, 0, 0 );
+				}
+				
+				public function setBeginPosition( object position )
+				{
+					.beginPosition = position;
+					if( not .centerPosition )
+						.centerPosition = new Draw.Position( );
+					.centerPosition.x = .beginPosition.x + ( .width / 2.0 );
+					.centerPosition.y = .beginPosition.y + ( .height / 2.0 );
+				}
+				
+				/**
+				 * @function setCenterPosition
+				 * @declaration functions setCenterPosition( object position )
+				 * @brief Set the center position for the circle
+				 * @param object position the center position
+				 */
+				public function setCenterPosition( object position )
+				{
+					.centerPosition = position;
+					if( not .beginPosition )
+						.beginPosition = new Draw.Position( );
+					.beginPosition.x = .centerPosition.x - ( .width / 2.0 );
+					.beginPosition.y = .centerPosition.y - ( .height / 2.0 );
+				}
+				
+				/**
+				 * @function setWidth
+				 * @declaration setWidth( number width )
+				 * @brief Set the width of the rectangle
+				 * @param number width the width of the rectangle
+				 */
+				public function setWidth( number width )
+					.width = width;
+				
+				/**
+				 * @function setHeight
+				 * @declaration function setHeight( number height )
+				 * @brief Set the height of the rectangle
+				 * @param object height the height of the rectangle
+				 */
+				public function setHeight( number height )
+					.height = height;
+				
+				/**
+				 * @function setFilled
+				 * @declaration function setFilled( boolean filled )
+				 * @brief Set if the rectangles should be filled or not
+				 * @param boolean filled true or false
+				 */
+				public function setFilled( boolean filled )
+					.filled = filled;
+				
+				public function render( object document, object context,
+					object beginPosition, object limitPosition )
+				{
+					number width;
+					number height;
+					object ellipseBeginPosition = new Draw.Position( );
+					object endPosition;
+					
+					if( .width != -1 )
+						width = .width;
+					else
+						width = ( limitPosition.x - .marginRight ) - beginPosition.x;
+					
+					if( .height != -1 )
+						height = .height;
+					else
+						height = ( limitPosition.y - .marginBottom ) - beginPosition.y;
+					
+					if( width == 0 or height == 0 )
+						return beginPosition;
+					
+					ellipseBeginPosition.x = beginPosition.x + .marginLeft;
+					ellipseBeginPosition.y = beginPosition.y + .marginTop;
+					
+					.setBeginPosition( ellipseBeginPosition );
+					
+					context.setSourceRGB( .color.red, .color.green, .color.blue );
+					context.setLineWidth( .lineWidth );
+					context.save( );
+					context.translate( .centerPosition.x, .centerPosition.y );
+					context.scale( width / 2, height / 2 );
+					context.newSubPath( );
+					context.arc( 0, 0, 1, 0, 2.0 * Math.pi( ) );
+					context.restore( );
+					
+					if( .filled )
+						context.fill( );
+					else
+						context.stroke( );
+					
+					endPosition = new Draw.Position( );
+					endPosition.x = .beginPosition.x + .marginLeft + .width + .marginRight;
+					endPosition.y = .beginPosition.y + .marginTop + .height + .marginBottom;
+					
+					return endPosition;
+				}
+			}
+			/**
+			 * @end
+			 */
+			
+			/**
+			 * @class EllipseContainer
+			 * @extends Draw.Item.Container
+			 * @brief An ellipse that can contain other items
+			 */
+			class EllipseContainer extends Draw.Item.Container
+			{
+				private object ellipse;
+				private number width;
+				private number height;
+				
+				public function constructor( )
+				{
+					super( );
+					.borderWidth = 0;
+					.ellipse = new Draw.Item.Shape.Ellipse( );
+					.width = -1;
+					.height = -1;
+				}
+				
+				public function setBorderWidth( number borderWidth )
+					.ellipse.setLineWidth( borderWidth );
+				
+				/**
+				 * @function setLineWidth
+				 * @declaration function setLineWidth( number lineWidth )
+				 * @brief Set the line width for the rectangle
+				 * @param number lineWidth the width of the line
+				 */
+				public function setLineWidth( number lineWidth )
+					.ellipse.setLineWidth( lineWidth );
+				
+				/**
+				 * @function setColor
+				 * @declaration function setColor( object color )
+				 * @brief Set the color for the ellipse
+				 * @param object color an instance of a Draw.Color object
+				 */
+				public function setColor( object color )
+					.ellipse.setColor( color );
+				
+				/**
+				 * @function setFilled
+				 * @declaration function setFilled( boolean filled )
+				 * @brief Set if the rectangles should be filled or not
+				 * @param boolean filled true or false
+				 */
+				public function setFilled( boolean filled )
+					.ellipse.setFilled( filled );
+				
+				/**
+				 * @function setWidth
+				 * @declaration setWidth( number width )
+				 * @brief Set the width of the rectangle
+				 * @param number width the width of the rectangle
+				 */
+				public function setWidth( number width )
+					.width = width;
+				
+				/**
+				 * @function setHeight
+				 * @declaration function setHeight( number height )
+				 * @brief Set the height of the rectangle
+				 * @param object height the height of the rectangle
+				 */
+				public function setHeight( number height )
+					.height = height;
+				
+				public function render( object document, object context,
+					object beginPosition, object limitPosition )
+				{
+					number width;
+					number height;
+					object itemLimitPosition;
+					object lastItemEndPosition;
+					object endPosition;
+					
+					itemLimitPosition = new Draw.Position( );
+					itemLimitPosition.x = limitPosition.x; // - .marginRight;
+					itemLimitPosition.y = limitPosition.y; // - .marginBottom;
+					
+					if( .width != -1 )
+						itemLimitPosition.x = beginPosition.x + .marginLeft
+							+ .width + .marginRight;
+					
+					if( .height != -1 )
+						itemLimitPosition.y = beginPosition.y + .marginTop
+							+ .height + .marginBottom;
+					
+					lastItemEndPosition = super.render( document, context,
+						beginPosition, itemLimitPosition );
+					
+					if( .width == -1 )
+						width = limitPosition.x - beginPosition.x
+							- .marginLeft - .marginRight;
+					else
+						width = .width;
+					
+					if( .height == -1 )
+						height = ( lastItemEndPosition.y - .marginBottom )
+							- ( beginPosition.y + .marginTop );
+					else
+						height = .height;
+					
+					.ellipse.setWidth( width );
+					.ellipse.setHeight( height );
+					
+					.ellipse.setMarginTop( .marginTop );
+					// Don't ask right now. It works..
+					//.ellipse.setMarginBottom( .marginBottom );
+					.ellipse.setMarginLeft( .marginLeft );
+					.ellipse.setMarginRight( .marginRight );
+					
+					endPosition = .ellipse.render( document, context,
+						beginPosition, limitPosition );
+					
+					return endPosition;
+				}
+			}
+			/**
+			 * @end
+			 */
+		}
+		/**
+		 * @end
+		 */
+	}
+	/**
+	 * @end
+	 */
+}
+/**
+ * @end
+ */
+

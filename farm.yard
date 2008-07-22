@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<yard name="easydraw">
+
+	<phase id="install">
+		<copy file="draw.feh" target="$(FeriteModuleSourceDir)" />
+		<copy file="draw-template.feh" target="$(FeriteModuleSourceDir)" />
+		<copy file="draw.xml" target="$(FeriteModuleDescriptionDir)" />
+		<execute program="feritedoc" arguments="--regenerate" />
+	</phase>
+
+</yard>
+
