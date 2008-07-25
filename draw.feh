@@ -985,6 +985,8 @@ namespace Draw
 			protected object graphBeginPosition;
 			protected object graphEndPosition;
 			array colors;
+			final number fontHeight = 11;
+			number highestYValuesCount;
 			
 			public function constructor( )
 			{
@@ -1023,31 +1025,41 @@ namespace Draw
 						{
 							value.map() using ( _key, _value )
 							{
-								if( not .yValues.keyExists( _key ) )
-									.yValues[_key] = [];
-								
-								.yValues[_key][] = _value;
-								
-								if( _value > .highestValue )
-									.highestValue = _value;
+								.appendYValue( xValue, _value );
 							};
 						}
 						else
 						{
-							string valueAsString = "" + value;
-							
-							.yValues[] = value;
-							
-							if( value > .highestYValue )
-								.highestYValue = value;
-							
-							if( valueAsString.length( ) > .longestYValue )
-								.longestYValue = valueAsString.length( );
+							.appendYValue( xValue, value );
 						}
 					};
 				};
 				
+				.yValues.each() using ( _yValues )
+				{
+					number _yValuesCount = _yValues.size( );
+					if( _yValuesCount > .highestYValuesCount )
+						.highestYValuesCount = _yValuesCount;
+				};
+				
 				.dataSet = true;
+			}
+			
+			function appendYValue( string key, number value )
+			{
+				string valueAsString = "" + value;
+				number valueCharacterLength = valueAsString.length( );
+				
+				if( not .yValues.keyExists( key ) )
+					.yValues[key] = [];
+				
+				.yValues[key][] = value;
+				
+				if( value > .highestYValue )
+					.highestYValue = value;
+				
+				if( valueCharacterLength > .longestYValue )
+					.longestYValue = valueCharacterLength;
 			}
 			
 			public function x( number x )
@@ -1060,12 +1072,23 @@ namespace Draw
 				return .height - ( y / .yScaleValue );
 			}
 			
+			function drawErrorMessage( object document, object context,
+				object beginPosition, object limitPosition, boolean toMuchData )
+			{
+				object text = new Draw.Item.Text( );
+				string message = "Not enough data provided to draw this chart.";
+				if( toMuchData )
+					message = "To much data provided to draw this chart.";
+				text.setText( message );
+				text.setFont( "Sans Bold 12" );
+				return text.render( document, context, beginPosition, limitPosition );
+			}
+			
 			protected function setup( object canvas, object context,
 				object beginPosition, object endPosition )
 			{
 				number xValueLength = 60;
 				number yValueLength = 30;
-				number valueHeight = 16;
 				number highestYValue = .highestYValue;
 				
 				/*
@@ -1102,7 +1125,7 @@ namespace Draw
 				.graphEndPosition.x = endPosition.x - .marginRight;
 				.graphEndPosition.y = endPosition.y - .marginBottom - xValueLength;
 				
-				.markers = .height / valueHeight;
+				.markers = .height / .fontHeight;
 				.markers = .markers.floor( );
 				.markers = .markers.round( );
 				
@@ -1202,9 +1225,9 @@ namespace Draw
 				object beginPosition, object endPosition )
 			{
 				{
-					number verticalGridLines = .xValues.size( );
+					number verticalGridLines = .xValues.size( ) + 1;
 					
-					for( number i = 0; i <= verticalGridLines; i++ )
+					for( number i = 1; i <= verticalGridLines; i++ )
 					{
 						object line = new Draw.Item.Shape.Line( );
 						object lineBeginPosition = new Draw.Position( );
@@ -1235,8 +1258,7 @@ namespace Draw
 						object textEndPosition = new Draw.Position( );
 						
 						textBeginPosition.x = 2;
-						textBeginPosition.y = beginPosition.x + .x( index + 1 ) - 8;
-						//textEndPosition.x = endPosition.y;
+						textBeginPosition.y = beginPosition.x + .x( index + 1 ) - 5;
 						textEndPosition.x = 70;
 						textEndPosition.y = endPosition.x;
 						
@@ -1252,38 +1274,72 @@ namespace Draw
 			public function render( object document, object context,
 				object beginPosition, object limitPosition )
 			{
-				number valuesCount = .xValues.size( );
+				number xValuesCount = .xValues.size( );
 				array positions = [];
-				number positionsCount = 0;
+				number graphWidth;
+				
+				// A line chart is not much of a line chart without 2 dots to
+				// draw a line between
+				if( xValuesCount < 2 )
+				{
+					return .drawErrorMessage( document, context, beginPosition,
+						limitPosition, false );
+				}
 				
 				.setup( document, context, beginPosition, limitPosition );
-				.xScaleValue = ( .xValues.size( ) + 1 ) / .width;
+				
+				graphWidth = .graphEndPosition.x - .graphBeginPosition.x;
+				
+				// We don't draw the chart if not all markers fit on
+				// the x axis
+				if( ( xValuesCount * .fontHeight ) > graphWidth )
+				{
+					return .drawErrorMessage( document, context, beginPosition,
+						limitPosition, true );
+				}
+				
+				.xScaleValue = ( xValuesCount + 1 ) / .width;
 				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				
-				for( number i = 0; i < valuesCount; i++ )
+				// Walk through the values and create positions to start and
+				// stop drawing the lines on
+				for( number y = 0; y < .highestYValuesCount; y++ )
 				{
-					number realX = i + 1;
-					number realY = .yValues[i];
-					
-					object position = new Draw.Position( );
-					position.x = .graphBeginPosition.x + .x( realX );
-					position.y = .graphBeginPosition.y + .y( realY );
-					
-					positions[] = position;
+					for( number x = 0; x < xValuesCount; x++ )
+					{
+						number realX = x + 1; // + 1 because we don't want to start drawing
+						                      // on the y axis. This should be changed to a
+						                      // percentage of the width instead.
+						
+						string key = "${y}";
+						number realY = .yValues[x][y];
+						
+						object position = new Draw.Position( );
+						position.x = .graphBeginPosition.x + .x( realX );
+						position.y = .graphBeginPosition.y + .y( realY );
+						
+						if( not positions.keyExists( key ) )
+							positions[key] = [];
+						
+						positions[key][] = position;
+					}
 				}
 				
-				positionsCount = positions.size( );
-				
-				positions.eachWithIndex( ) using ( beginPosition, index )
+				positions.eachWithIndex() using ( _positions, color )
 				{
-					if( index + 1 <= positionsCount - 1 )
+					number _positionsCount = _positions.size( );
+					
+					_positions.eachWithIndex( ) using ( lineBeginPosition, index )
 					{
-						object endPosition = positions[index+1];
-						object line = new Draw.Item.Shape.Line( );
-						line.setColor( .colors[0] );
-						line.render( document, context, beginPosition, endPosition );
-					}
+						if( index + 1 <= _positionsCount - 1 )
+						{
+							object lineEndPosition = _positions[index+1];
+							object line = new Draw.Item.Shape.Line( );
+							line.setColor( .colors[color] );
+							line.render( document, context, lineBeginPosition, lineEndPosition );
+						}
+					};
 				};
 				
 				return limitPosition;
@@ -1296,9 +1352,10 @@ namespace Draw
 				object beginPosition, object endPosition )
 			{
 				{
-					number verticalGridLines = ( .xValues.size( ) * 2 ) + 1;
+					number xValuesCount = .xValues.size( );
+					number verticalGridLines = ( xValuesCount * .highestYValuesCount ) + xValuesCount + 1;
 					
-					for( number i = 0; i <= verticalGridLines; i++ )
+					for( number i = 1; i <= verticalGridLines; i++ )
 					{
 						object line = new Draw.Item.Shape.Line( );
 						object lineBeginPosition = new Draw.Position( );
@@ -1329,8 +1386,8 @@ namespace Draw
 						object textEndPosition = new Draw.Position( );
 						
 						textBeginPosition.x = 2;
-						textBeginPosition.y = beginPosition.x + .x( index + 1 + ( index * 1 ) );
-						
+						//textBeginPosition.y = beginPosition.x + .x( index + 1 + index );
+						textBeginPosition.y = beginPosition.x + .x( ( index + 1 ) + ( index * .highestYValuesCount ) );
 						//textEndPosition.x = endPosition.y;
 						textEndPosition.x = 70;
 						textEndPosition.y = endPosition.x;
@@ -1347,32 +1404,57 @@ namespace Draw
 			function render( object document, object context,
 				object beginPosition, object limitPosition )
 			{
+				number xValuesCount = .xValues.size( );
+				number graphWidth;
+				
 				.setup( document, context, beginPosition, limitPosition );
-				.xScaleValue = ( ( .xValues.size( ) * 2 ) + 1 ) / .width;
+				
+				graphWidth = .graphEndPosition.x - .graphBeginPosition.x;
+				
+				if( ( xValuesCount * .fontHeight ) > graphWidth )
+				{
+					return .drawErrorMessage( document, context, beginPosition,
+						limitPosition, true );
+				}
+				
+				// xValuesCount = number of groups
+				// .highestYValuesCount = number of bars in group
+				// * 2 because we want space between the bars groups
+				// + 1 is needed, trust me
+				.xScaleValue = ( ( xValuesCount * .highestYValuesCount ) + xValuesCount + 1 ) / .width;
+				
 				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				
 				for( number i = 0; i < .xValues.size( ); i++ )
 				{
-					//number realX = .xValues[i];
-					number realX = i + 1 + i;
-					number realY = .yValues[i];
+					if( .yValues.size( ) - 1 >= i )
+					{
+					array yValues = .yValues[i];
 					
-					object rectangle = new Draw.Item.Shape.Rectangle( );
-					object rectangleBeginPosition = new Draw.Position( );
-					object rectangleEndPosition = new Draw.Position( );
-					//position.x = beginPosition.x + .x( realX );
-					//position.y = beginPosition.y + .y( realY );
-					rectangleBeginPosition.x = .graphBeginPosition.x + .x( realX );
-					rectangleBeginPosition.y = .graphBeginPosition.y + .y( realY );
-					
-					rectangleEndPosition.x = .graphBeginPosition.x + .x( realX + 1 );
-					rectangleEndPosition.y = .graphEndPosition.y - 1;
-					
-					rectangle.setFilled( true );
-					rectangle.setColor( .colors[0] );
-					
-					rectangle.render( document, context, rectangleBeginPosition, rectangleEndPosition );
+					yValues.eachWithIndex() using ( yValue, index )
+					{
+						// + 1 because we don't want to start draw right beside the y axis
+						number realX = ( ( i + 1 ) + ( i * .highestYValuesCount ) ) + index;
+						
+						number realY = yValue;
+						
+						object rectangle = new Draw.Item.Shape.Rectangle( );
+						object rectangleBeginPosition = new Draw.Position( );
+						object rectangleEndPosition = new Draw.Position( );
+						
+						rectangleBeginPosition.x = .graphBeginPosition.x + .x( realX );
+						rectangleBeginPosition.y = .graphBeginPosition.y + .y( realY );
+						
+						rectangleEndPosition.x = .graphBeginPosition.x + .x( realX + 1 );
+						rectangleEndPosition.y = .graphEndPosition.y - 1;
+						
+						rectangle.setFilled( true );
+						rectangle.setColor( .colors[index] );
+						
+						rectangle.render( document, context, rectangleBeginPosition, rectangleEndPosition );
+					};
+					}
 				}
 				
 				return limitPosition;
