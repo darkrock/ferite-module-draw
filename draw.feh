@@ -319,6 +319,7 @@ namespace Draw
 				endPosition = item.render( self, .context, beginPosition, limitPosition );
 				
 				.latestItemEndPosition = endPosition;
+				.itemsRendered++;
 			}
 			else
 			{
@@ -620,6 +621,101 @@ namespace Draw
 			 */
 			public function render( object document, object context,
 				object beginPosition, object limitPosition );
+		}
+		/**
+		 * @end
+		 */
+		
+		/**
+		 * @class SimpleText
+		 * @extends Draw.Item.Item
+		 * @brief An item used to draw simple text
+		 * @warning SimpleText does not wrap itself if it does not fit in
+		            the space it has to render itselfs in.
+		 */
+		class SimpleText extends Draw.Item.Item
+		{
+			string text;
+			object color;
+			string fontFace;
+			number fontSize;
+			boolean rotate;
+			number angle;
+			
+			constructor {
+				.color = new Draw.Color( 0, 0, 0 );
+				.fontFace = "Sans";
+				.fontSize = 12;
+				.rotate = false;
+				.angle = 0;
+			}
+			
+			function setText( string text )
+				.text = text;
+			
+			function setColor( object color )
+				.color = color;
+			
+			function setFontFace( string fontFace )
+				.fontFace = fontFace;
+			
+			function setFontSize( number fontSize )
+				.fontSize = fontSize;
+			
+			function rotate( number degrees ) {
+				.rotate = true;
+				.angle = degrees * ( Math.pi( ) / 180 );
+			}
+			
+			function extents {
+				object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 1, 1 );
+				object context = new Cairo.Context( surface );
+				context.selectFontFace( .fontFace, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				context.setFontSize( .fontSize );
+				return context.textExtents( .text );
+			}
+			
+			function getWidth
+				return .extents().width;
+			
+			function getHeight
+				return .extents().height;
+			
+			function getWidth {
+				object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 1, 1 );
+				object context = new Cairo.Context( surface );
+				object extents;
+				context.selectFontFace( .fontFace, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				context.setFontSize( .fontSize );
+				extents = context_text_extents( .text );
+				return extents.height;
+			}			
+			
+			function render( object document, object context,
+				object beginPosition, object limitPosition )
+			{
+				number width = .getWidth();
+				number height = .getHeight();
+				
+				context.save();
+				
+				if( .rotate ) {
+					context.translate( 0, document.getHeight( ) );
+					context.rotate( .angle );
+				}
+				
+				context.moveTo( beginPosition.x, beginPosition.y + height );
+				context.setSourceRGB( .color.red, .color.green, .color.blue );
+				context.selectFontFace( .fontFace, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				context.setFontSize( .fontSize );
+				
+				context.showText( .text );
+				
+				context.restore();
+				
+				return new Draw.Position( beginPosition.x + width,
+					beginPosition.y + height );
+			}
 		}
 		/**
 		 * @end
@@ -970,29 +1066,44 @@ namespace Draw
 		{
 			protected number width;
 			protected number height;
+			protected boolean widthSet;
+			protected boolean heightSet;
 			protected number xScaleValue;
 			protected number yScaleValue;
 			protected array xValues;
 			protected array yValues;
 			protected number highestXValue;
 			protected number highestYValue;
-			number longestXValue;
-			number longestYValue;
+			protected string longestXValue;
+			protected string longestYValue;
+			protected number longestXValueLength;
+			protected number longestYValueLength;
+			protected number longestXValueWidth;
+			protected number longestYValueWidth;
 			protected boolean dataSet;
 			protected number markers;
 			protected number markerIncrement;
 			protected number gridIncrement;
+			protected number graphWidth;
+			protected number graphHeight;
 			protected object graphBeginPosition;
 			protected object graphEndPosition;
-			array colors;
-			final number fontHeight = 11;
-			number highestYValuesCount;
+			protected array colors;
+			protected number fontHeight;
+			protected number highestYValuesCount;
+			protected final number fontSize = 8;
+			protected final number xValueExtraSpace = 20;
+			protected final number xValueTopMargin = 5;
+			protected final number yValueExtraSpace = 10;
+			protected final number yValueRightMargin = 5;
 			
 			public function constructor( )
 			{
 				.dataSet = false;
 				.graphBeginPosition = new Draw.Position( 0, 0 );
 				.graphEndPosition = new Draw.Position( 0, 0 );
+				.widthSet = false;
+				.heightSet = false;
 				.colors = [
 						new Draw.Color( 255, 153, 0 ),
 						new Draw.Color( 0, 102, 153 ),
@@ -1009,6 +1120,18 @@ namespace Draw
 					];
 			}
 			
+			public function setWidth( number width )
+			{
+				.widthSet = true;
+				.width = width;
+			}
+			
+			public function setHeight( number height )
+			{
+				.heightSet = true;
+				.height = height;
+			}
+			
 			public function setData( array data )
 			{
 				data.each() using ( _data )
@@ -1016,8 +1139,10 @@ namespace Draw
 					string xValue = "" + _data['key'][0];
 					.xValues[] = xValue;
 					
-					if( xValue.length( ) > .longestXValue )
-						.longestXValue = xValue.length( );
+					if( xValue.length( ) > .longestXValueLength ) {
+						.longestXValueLength = xValue.length( );
+						.longestXValue = xValue;
+					}
 					
 					_data['value'].map() using ( key, value )
 					{
@@ -1058,8 +1183,10 @@ namespace Draw
 				if( value > .highestYValue )
 					.highestYValue = value;
 				
-				if( valueCharacterLength > .longestYValue )
-					.longestYValue = valueCharacterLength;
+				if( valueCharacterLength > .longestYValueLength ) {
+					.longestYValueLength = valueCharacterLength;
+					.longestYValue = valueAsString;
+				}
 			}
 			
 			public function x( number x )
@@ -1069,7 +1196,7 @@ namespace Draw
 			
 			public function y( number y )
 			{
-				return .height - ( y / .yScaleValue );
+				return .graphHeight - ( y / .yScaleValue );
 			}
 			
 			function drawErrorMessage( object document, object context,
@@ -1087,45 +1214,60 @@ namespace Draw
 			protected function setup( object canvas, object context,
 				object beginPosition, object endPosition )
 			{
-				number xValueLength = 60;
-				number yValueLength = 30;
 				number highestYValue = .highestYValue;
+				number xValueLength;
+				number yValueLength;
 				
-				/*
-				.xValues.each( ) using ( value )
 				{
-					object text = new Draw.Item.Text( );
-					number textWidth = 0;
-					text.setText( value );
-					text.setFont( "Sans 8" );
-					textWidth = text.getWidth( canvas );
-					Console.println( textWidth );
-					if( textWidth > xValueLength )
-						xValueLength = textWidth;
-				};
+					object text = new Draw.Item.SimpleText();
+					text.setFontFace( "Sans" );
+					text.setFontSize( .fontSize );
+					text.setText( .longestXValue );
+					xValueLength = text.getWidth() + .xValueExtraSpace;
+					.longestXValueWidth = xValueLength;
+					
+					{
+						.fontHeight = text.getHeight() * 2;
+						.fontHeight += 0.0;
+					}
+				}
 				
-				.yValues.each( ) using ( value )
 				{
-					object text = new Draw.Item.Text( );
-					number textWidth = 0;
-					text.setText( value );
-					text.setFont( "Sans 8" );
-					textWidth = text.getWidth( canvas );
-					if( textWidth > yValueLength )
-						yValueLength = textWidth;
-				};
-				*/
+					object text = new Draw.Item.SimpleText();
+					text.setFontFace( "Sans" );
+					text.setFontSize( .fontSize );
+					text.setText( .longestYValue );
+					yValueLength = text.getWidth();
+					.longestYValueWidth = yValueLength;
+				}
 				
-				.width = endPosition.x - beginPosition.x - .marginLeft - .marginRight - yValueLength;
-				.height = endPosition.y - beginPosition.y - .marginTop - .marginBottom - xValueLength;
+				// Check if the requested height fits on the remaining area and
+				// if not begin a new page (if the canvas supports that)
+				if( .heightSet and .height > ( endPosition.y - beginPosition.y - .marginTop - .marginBottom ) )
+				{
+					canvas.newPage();
+					beginPosition.x = canvas.getMarginLeft();
+					beginPosition.y = canvas.getMarginTop();
+					endPosition.x = canvas.getWidth() - canvas.getMarginRight();
+					endPosition.y = canvas.getHeight() - canvas.getMarginBottom();
+				}
 				
-				.graphBeginPosition.x = beginPosition.x + .marginLeft + yValueLength;
+				if( not .widthSet )
+					.width = endPosition.x - beginPosition.x - .marginLeft - .marginRight;
+				
+				if( not .heightSet )
+					.height = endPosition.y - beginPosition.y - .marginTop - .marginBottom;
+				
+				.graphWidth = .width - yValueLength - .yValueRightMargin - .yValueExtraSpace;
+				.graphHeight = .height - xValueLength;
+				
+				.graphBeginPosition.x = beginPosition.x + .marginLeft + yValueLength + .yValueRightMargin + .yValueExtraSpace;
 				.graphBeginPosition.y = beginPosition.y + .marginTop;
 				
-				.graphEndPosition.x = endPosition.x - .marginRight;
-				.graphEndPosition.y = endPosition.y - .marginBottom - xValueLength;
+				.graphEndPosition.x = .graphBeginPosition.x + .graphWidth;
+				.graphEndPosition.y = .graphBeginPosition.y + .graphHeight;
 				
-				.markers = .height / .fontHeight;
+				.markers = .graphHeight / .fontHeight;
 				.markers = .markers.floor( );
 				.markers = .markers.round( );
 				
@@ -1153,18 +1295,9 @@ namespace Draw
 					.markers = 2;
 				}
 				
-				.yScaleValue = ( .markers * .markerIncrement ) / .height;
+				.yScaleValue = ( .markers * .markerIncrement ) / .graphHeight;
 				
 				.gridIncrement = ( .markerIncrement + 0.0 ) / 2;
-				
-				/*
-				if( ( .gridIncrement / .yScaleValue ) >= verticalMarkerSpaceNeededInPixels and
-					( .markers * ( .gridIncrement / .yScaleValue ) ) <= .height )
-				{
-					.markers *= 2;
-					.markerIncrement = .gridIncrement;
-				}
-				*/
 			}
 			
 			function drawYAxis( object document, object context,
@@ -1205,10 +1338,11 @@ namespace Draw
 						object textBeginPosition = new Draw.Position( );
 						object textEndPosition = new Draw.Position( );
 						
-						textBeginPosition.x = beginPosition.x - 55;
-						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - 9.5;
-						textEndPosition.x = beginPosition.x - 5;
-						textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - 9.5 + 19;
+						//textBeginPosition.x = beginPosition.x - 55;
+						textBeginPosition.x = beginPosition.x - .longestYValueWidth;
+						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 );
+						textEndPosition.x = beginPosition.x - .yValueRightMargin;
+						textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 ) + .fontHeight;
 						
 						text.setText( "${marker}" );
 						text.setFont( "Sans 8" );
@@ -1253,13 +1387,15 @@ namespace Draw
 					
 					.xValues.eachWithIndex() using ( xValue, index )
 					{
+						// REMEMBER WE ARE ROTATING THE TEXT SO X AND Y ARE REVERSED
+						
 						object text = new Draw.Item.Text( );
 						object textBeginPosition = new Draw.Position( );
 						object textEndPosition = new Draw.Position( );
 						
-						textBeginPosition.x = 2;
+						textBeginPosition.x = document.getHeight() - endPosition.y - .longestXValueWidth - .xValueExtraSpace;
 						textBeginPosition.y = beginPosition.x + .x( index + 1 ) - 5;
-						textEndPosition.x = 70;
+						textEndPosition.x = textBeginPosition.x + .longestXValueWidth + .xValueExtraSpace - .xValueTopMargin;
 						textEndPosition.y = endPosition.x;
 						
 						text.setText( xValue );
@@ -1342,7 +1478,8 @@ namespace Draw
 					};
 				};
 				
-				return limitPosition;
+				return new Draw.Position( beginPosition.x + .width + .marginLeft + .marginRight,
+					beginPosition.y + .height + .marginTop + .marginBottom );
 			}
 		}
 		
@@ -1381,15 +1518,15 @@ namespace Draw
 					
 					.xValues.eachWithIndex() using ( xValue, index )
 					{
+						// REMEMBER WE ROTATE THE TEXT SO X AND Y ARE REVERSED
+						
 						object text = new Draw.Item.Text( );
 						object textBeginPosition = new Draw.Position( );
 						object textEndPosition = new Draw.Position( );
 						
-						textBeginPosition.x = 2;
-						//textBeginPosition.y = beginPosition.x + .x( index + 1 + index );
+						textBeginPosition.x = document.getHeight() - endPosition.y - .longestXValueWidth - .xValueExtraSpace;
 						textBeginPosition.y = beginPosition.x + .x( ( index + 1 ) + ( index * .highestYValuesCount ) );
-						//textEndPosition.x = endPosition.y;
-						textEndPosition.x = 70;
+						textEndPosition.x = textBeginPosition.x + .longestXValueWidth + .xValueExtraSpace - .xValueTopMargin;
 						textEndPosition.y = endPosition.x;
 						
 						text.setText( xValue );
@@ -1421,7 +1558,7 @@ namespace Draw
 				// .highestYValuesCount = number of bars in group
 				// * 2 because we want space between the bars groups
 				// + 1 is needed, trust me
-				.xScaleValue = ( ( xValuesCount * .highestYValuesCount ) + xValuesCount + 1 ) / .width;
+				.xScaleValue = ( ( xValuesCount * .highestYValuesCount ) + xValuesCount + 1 ) / .graphWidth;
 				
 				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
@@ -1457,7 +1594,8 @@ namespace Draw
 					}
 				}
 				
-				return limitPosition;
+				return new Draw.Position( beginPosition.x + .width + .marginLeft + .marginRight,
+					beginPosition.y + .height + .marginTop + .marginBottom );
 			}
 		}
 		
