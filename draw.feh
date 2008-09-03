@@ -1092,10 +1092,10 @@ namespace Draw
 			protected number fontHeight;
 			protected number highestYValuesCount;
 			protected final number fontSize = 8;
-			protected final number xValueExtraSpace = 20;
-			protected final number xValueTopMargin = 5;
-			protected final number yValueExtraSpace = 10;
-			protected final number yValueRightMargin = 5;
+			protected final number xValueExtraSpace = 0;
+			protected final number xValueTopMargin = 15;
+			protected final number yValueExtraSpace = 0;
+			protected final number yValueRightMargin = 15;
 			
 			public function constructor( )
 			{
@@ -1223,7 +1223,8 @@ namespace Draw
 					text.setFontFace( "Sans" );
 					text.setFontSize( .fontSize );
 					text.setText( .longestXValue );
-					xValueLength = text.getWidth() + .xValueExtraSpace;
+					xValueLength = text.getWidth();
+					xValueLength = xValueLength + ( xValueLength * 0.45 ) + .xValueExtraSpace;
 					.longestXValueWidth = xValueLength;
 					
 					{
@@ -1238,6 +1239,7 @@ namespace Draw
 					text.setFontSize( .fontSize );
 					text.setText( .longestYValue );
 					yValueLength = text.getWidth();
+					yValueLength += ( yValueLength * 0.45 ) + .yValueExtraSpace;
 					.longestYValueWidth = yValueLength;
 				}
 				
@@ -1258,10 +1260,10 @@ namespace Draw
 				if( not .heightSet )
 					.height = endPosition.y - beginPosition.y - .marginTop - .marginBottom;
 				
-				.graphWidth = .width - yValueLength - .yValueRightMargin - .yValueExtraSpace;
+				.graphWidth = .width - yValueLength - .yValueRightMargin;
 				.graphHeight = .height - xValueLength;
 				
-				.graphBeginPosition.x = beginPosition.x + .marginLeft + yValueLength + .yValueRightMargin + .yValueExtraSpace;
+				.graphBeginPosition.x = beginPosition.x + .marginLeft + yValueLength + .yValueRightMargin;
 				.graphBeginPosition.y = beginPosition.y + .marginTop;
 				
 				.graphEndPosition.x = .graphBeginPosition.x + .graphWidth;
@@ -1339,10 +1341,11 @@ namespace Draw
 						object textEndPosition = new Draw.Position( );
 						
 						//textBeginPosition.x = beginPosition.x - 55;
-						textBeginPosition.x = beginPosition.x - .longestYValueWidth;
-						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 );
+						textBeginPosition.x = beginPosition.x - .longestYValueWidth - .yValueExtraSpace;
+						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .markerIncrement / 2 );
 						textEndPosition.x = beginPosition.x - .yValueRightMargin;
-						textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 ) + .fontHeight;
+						//textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 ) + .fontHeight;
+						textEndPosition.y = endPosition.y + .longestXValueWidth + .xValueTopMargin + .xValueExtraSpace;
 						
 						text.setText( "${marker}" );
 						text.setFont( "Sans 8" );
