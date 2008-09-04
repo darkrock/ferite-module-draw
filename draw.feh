@@ -1202,13 +1202,23 @@ namespace Draw
 			function drawErrorMessage( object document, object context,
 				object beginPosition, object limitPosition, boolean toMuchData )
 			{
+				object textBeginPosition = new Draw.Position();
+				object textLimitPosition = new Draw.Position();
+				object textEndPosition;
 				object text = new Draw.Item.Text( );
 				string message = "Not enough data provided to draw this chart.";
 				if( toMuchData )
 					message = "To much data provided to draw this chart.";
 				text.setText( message );
 				text.setFont( "Sans Bold 12" );
-				return text.render( document, context, beginPosition, limitPosition );
+				textBeginPosition.x = beginPosition.x + .marginLeft;
+				textBeginPosition.y = beginPosition.y + .marginTop;
+				textLimitPosition.x = limitPosition.x - .marginRight;
+				textLimitPosition.y = limitPosition.y - .marginBottom;
+				textEndPosition = text.render( document, context, textBeginPosition, textLimitPosition );
+				textEndPosition.x += .marginRight;
+				textEndPosition.y += .marginBottom;
+				return textEndPosition;
 			}
 			
 			protected function setup( object canvas, object context,
@@ -1228,7 +1238,7 @@ namespace Draw
 					.longestXValueWidth = xValueLength;
 					
 					{
-						.fontHeight = text.getHeight() * 2;
+						.fontHeight = text.getHeight() * 2.5;
 						.fontHeight += 0.0;
 					}
 				}
@@ -1340,9 +1350,8 @@ namespace Draw
 						object textBeginPosition = new Draw.Position( );
 						object textEndPosition = new Draw.Position( );
 						
-						//textBeginPosition.x = beginPosition.x - 55;
 						textBeginPosition.x = beginPosition.x - .longestYValueWidth - .yValueExtraSpace;
-						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .markerIncrement / 2 );
+						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 3 );
 						textEndPosition.x = beginPosition.x - .yValueRightMargin;
 						//textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 ) + .fontHeight;
 						textEndPosition.y = endPosition.y + .longestXValueWidth + .xValueTopMargin + .xValueExtraSpace;
@@ -1437,7 +1446,7 @@ namespace Draw
 						limitPosition, true );
 				}
 				
-				.xScaleValue = ( xValuesCount + 1 ) / .width;
+				.xScaleValue = ( xValuesCount + 1 ) / .graphWidth;
 				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
 				
