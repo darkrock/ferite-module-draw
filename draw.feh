@@ -99,13 +99,6 @@ namespace Draw
 		 * @param number green the amount of green (a value between 0 and 1)
 		 * @param number blue the amount of blue (a value between 0 and 1) 
 		 */
-//		public function constructor( number red, number green, number blue )
-//		{
-//			.red = red;
-//			.green = green;
-//			.blue = blue;
-//		}
-		
 		public function constructor( number red, number green, number blue )
 		{
 			.red = red / 255.0;
@@ -1062,552 +1055,469 @@ namespace Draw
 		 * @end
 		 */
 		
-		abstract class Chart extends Draw.Item.Item
-		{
-			protected number width;
-			protected number height;
-			protected boolean widthSet;
-			protected boolean heightSet;
-			protected number xScaleValue;
-			protected number yScaleValue;
-			protected array xValues;
-			protected array yValues;
-			protected number highestXValue;
-			protected number highestYValue;
-			protected string longestXValue;
-			protected string longestYValue;
-			protected number longestXValueLength;
-			protected number longestYValueLength;
-			protected number longestXValueWidth;
-			protected number longestYValueWidth;
-			protected boolean dataSet;
-			protected number markers;
-			protected number markerIncrement;
-			protected number gridIncrement;
-			protected number graphWidth;
-			protected number graphHeight;
-			protected object graphBeginPosition;
-			protected object graphEndPosition;
-			protected array colors;
-			protected number fontHeight;
-			protected number highestYValuesCount;
-			protected final number fontSize = 8;
-			protected final number xValueExtraSpace = 0;
-			protected final number xValueTopMargin = 15;
-			protected final number yValueExtraSpace = 0;
-			protected final number yValueRightMargin = 15;
+		abstract class Chart extends Draw.Item.Item {
+			object canvas;
+			array x_markers;
+			array values;
+			number highest_value;
+			number x_scale_value;
+			number y_scale_value;
+			number grid_surface_width;
+			number grid_surface_height;
+			number y_marker_surface_right_margin;
+			number x_marker_surface_top_margin;
+			number width;
+			number height;
+			number marker_height;
+			number highest_value_width;
+			number number_of_y_markers;
+			number y_marker_increment;
+			number y_grid_line_increment;
+			number widest_x_marker_width;
+			number y_marker_surface_width;
+			number y_marker_surface_height;
+			number x_marker_surface_width;
+			number x_marker_surface_height;
+			object y_marker_surface;
+			object y_marker_context;
+			object x_marker_surface;
+			object x_marker_context;
+			object grid_surface;
+			object grid_context;
+			array colours;
+			object grid_dark_background_colour;
+			object grid_light_background_colour;
+			object grid_line_colour;
+			number grid_line_width;
+			object context;
+			object begin_position;
+			object limit_position;
+			boolean width_set;
+			boolean height_set;
+			number marker_font_size;
 			
-			public function constructor( )
-			{
-				.dataSet = false;
-				.graphBeginPosition = new Draw.Position( 0, 0 );
-				.graphEndPosition = new Draw.Position( 0, 0 );
-				.widthSet = false;
-				.heightSet = false;
-				.colors = [
-						new Draw.Color( 255, 153, 0 ),
-						new Draw.Color( 0, 102, 153 ),
-						new Draw.Color( 102, 0, 153 ),
-						new Draw.Color( 153, 0, 102 ),
-						new Draw.Color( 164, 164, 75 ),
-						new Draw.Color( 173, 173, 173 ),
-						new Draw.Color( 255, 0, 0 ),
-						new Draw.Color( 0, 255, 0 ),
-						new Draw.Color( 0, 0, 255 ),
-						new Draw.Color( 255, 255, 0 ),
-						new Draw.Color( 255, 0, 255 ),
-						new Draw.Color( 0, 255, 255 )
-					];
+			constructor {
+				.width_set = false;
+				.height_set = false;
+				.marker_font_size = 10;
+				.y_marker_surface_right_margin = 10;
+				.x_marker_surface_top_margin = 10;
+				.colours = [
+					new Draw.Color( 255, 153, 0 ),
+					new Draw.Color( 0, 102, 153 ),
+					new Draw.Color( 102, 0, 153 ),
+					new Draw.Color( 153, 0, 102 ),
+					new Draw.Color( 164, 164, 75 ),
+					new Draw.Color( 173, 173, 173 ),
+					new Draw.Color( 255, 0, 0 ),
+					new Draw.Color( 0, 255, 0 ),
+					new Draw.Color( 0, 0, 255 ),
+					new Draw.Color( 255, 255, 0 ),
+					new Draw.Color( 255, 0, 255 ),
+					new Draw.Color( 0, 255, 255 )
+				];
+				.grid_dark_background_colour = new Draw.Color( 245, 245, 245 );
+				.grid_light_background_colour = new Draw.Color( 255, 255, 255 );
+				.grid_line_colour = new Draw.Color( 225, 225, 225 );
+				.grid_line_width = 1;
 			}
-			
-			public function setWidth( number width )
-			{
-				.widthSet = true;
-				.width = width;
+
+			// Calculate the total width
+			function calculate_item_width {
+				number max_width = .limit_position.x - .begin_position.x - .marginLeft - .marginRight;
+				if( ( not .width_set ) or .width > max_width  )
+					.width = max_width;
 			}
-			
-			public function setHeight( number height )
-			{
-				.heightSet = true;
-				.height = height;
-			}
-			
-			public function setData( array data )
-			{
-				data.each() using ( _data )
-				{
-					string xValue = "" + _data['key'][0];
-					.xValues[] = xValue;
-					
-					if( xValue.length( ) > .longestXValueLength ) {
-						.longestXValueLength = xValue.length( );
-						.longestXValue = xValue;
+			// Calculate the total height
+			function calculate_item_height {
+				number max_height = .limit_position.y - .begin_position.y - .marginTop - .marginBottom;
+				if( .height_set ) {
+					if( .height > .canvas.getHeight() )
+						.height = .canvas.getHeight() - .canvas.getMarginTop() - .canvas.getMarginBottom() - .marginTop - .marginBottom;
+					if( .height > max_height ) {
+						.canvas.newPage();
+						.begin_position = new Draw.Position( .canvas.getMarginLeft(), .canvas.getMarginTop() );
+						.limit_position = new Draw.Position( .canvas.getWidth() - .canvas.getMarginRight(), .canvas.getHeight() - .canvas.getMarginBottom() );
 					}
-					
-					_data['value'].map() using ( key, value )
-					{
-						if( value isa array )
-						{
-							value.map() using ( _key, _value )
-							{
-								.appendYValue( xValue, _value );
-							};
+				} else
+					.height = max_height;
+			}
+			// Calculate the width of the highest value and marker height
+			function calculate_highest_value {
+				object extents;
+				.context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.context.setFontSize( .marker_font_size );
+				extents = .context.textExtents( '' + .highest_value );
+				.highest_value_width = extents.width + ( extents.width * 0.1 );
+				.marker_height = extents.height;
+			}
+			// Calculate the width of the widest x marker
+			function calculate_widest_x_marker_width {
+				.context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.context.setFontSize( .marker_font_size );
+				.x_markers.each() using ( m ) {
+					object m_extents;
+					number m_width;
+					m_extents = .context.textExtents( '' + m );
+					m_width = m_extents.width + ( m_extents.width * 0.1 );
+					if( m_width > .widest_x_marker_width ) {
+						.widest_x_marker_width = m_width;
+					}
+				};
+			}
+			// Calculate the width and the height of the y axis surface
+			function calculate_y_marker_surface_size {
+				.y_marker_surface_width = .highest_value_width;
+				.y_marker_surface_height = .height;
+			}
+			// Calculate the width and the height of the x axis surface
+			function calculate_x_marker_surface_size {
+				number max_width = .height * 0.6;
+				if( .widest_x_marker_width > max_width ) {
+					array new_x_markers = [];
+					.context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+					.context.setFontSize( .marker_font_size );
+					.x_markers.each() using ( marker ) {
+						string m = '' + marker;
+						object m_extents;
+						number m_width;
+						m_extents = .context.textExtents( m );
+						m_width = m_extents.width + ( m_extents.width * 0.1 );
+						if( m_width > max_width ) {
+							number m_length = m.length() - 3;
+							while( m_width > max_width ) {
+								m_length = m_length - 1;
+								m = m[..m_length];
+								m_extents = .context.textExtents( m );
+								m_width = m_extents.width + ( m_extents.width * 0.1 );
+							}
+							m = m.trim( ' ' ) + '...';
 						}
-						else
-						{
-							.appendYValue( xValue, value );
-						}
+						new_x_markers[] = m;
 					};
-				};
+					.x_markers = new_x_markers;
+					.x_marker_surface_width = max_width;
+					.widest_x_marker_width = max_width;
+				} else
+					.x_marker_surface_width = .widest_x_marker_width;
+					
+				.x_marker_surface_height = .width - .y_marker_surface_width;
+			}
+			// Calculate the width and the height of the grid surface
+			function calculate_grid_surface_size {
+				.grid_surface_width = .width - .y_marker_surface_width - .y_marker_surface_right_margin;
+				.grid_surface_height = .height - .x_marker_surface_width - .x_marker_surface_top_margin;
+			}
+			// Calculate how many y markers to show and what the increment between them should be
+			function calculate_y_marker_scales {
+				.number_of_y_markers = .grid_surface_height / ( .marker_height * 4 );
+				.number_of_y_markers = .number_of_y_markers.floor();
+				.number_of_y_markers = .number_of_y_markers.round();
+			
+				if( .highest_value > 0 ) {
+					while( .highest_value % 2 != 0 )
+						.highest_value++;
 				
-				.yValues.each() using ( _yValues )
-				{
-					number _yValuesCount = _yValues.size( );
-					if( _yValuesCount > .highestYValuesCount )
-						.highestYValuesCount = _yValuesCount;
-				};
+					if( .number_of_y_markers > .highest_value )
+						.number_of_y_markers = .highest_value;
 				
-				.dataSet = true;
+					.y_marker_increment = .highest_value / .number_of_y_markers;
+					.y_marker_increment = .y_marker_increment.ceil();
+					.y_marker_increment = .y_marker_increment.round();
+				
+					while( ( .number_of_y_markers * .y_marker_increment ) < .highest_value )
+						.y_marker_increment++;
+				
+					while( ( ( .number_of_y_markers - 1 ) * .y_marker_increment ) > .highest_value )
+						.number_of_y_markers--;
+				} else {
+					.y_marker_increment = 1;
+					.number_of_y_markers = 2;
+				}
+				
+				.y_scale_value = ( .number_of_y_markers * .y_marker_increment ) / .grid_surface_height;
+				.y_grid_line_increment = ( .y_marker_increment + 0.0 ) / 2;
+			}
+			// Create the grid surface and grid context
+			function create_grid_objects {
+				.grid_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, .grid_surface_width, .grid_surface_height );
+				.grid_context = new Cairo.Context( .grid_surface );
+				// Paint the grid surface with white background
+				.grid_context.setSourceRGB( 1.0, 1.0, 1.0 );
+				.grid_context.paint();
+			}
+			// Create the y axis marker surface and the y axis marker context
+			function create_y_marker_objects {
+				.y_marker_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, .y_marker_surface_width, .y_marker_surface_height );
+				.y_marker_context = new Cairo.Context( .y_marker_surface );
+				// Paint the surface with white background
+				.y_marker_context.setSourceRGB( 1.0, 1.0, 1.0 );
+				.y_marker_context.paint();
+			}
+			// Create the x marker surface and the x marker context
+			function create_x_marker_objects {
+				.x_marker_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, .x_marker_surface_width, .x_marker_surface_height );
+				.x_marker_context = new Cairo.Context( .x_marker_surface );
+				// Paint the surface with white background
+				.x_marker_context.setSourceRGB( 1.0, 1.0, 1.0 );
+				.x_marker_context.paint();
+			}
+			// Draw the y axis marker surface
+			function draw_y_marker_surface {
+				.y_marker_context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.y_marker_context.setFontSize( .marker_font_size );
+				.y_marker_context.setSourceRGB( 0.0, 0.0, 0.0 );
+				for( number i = 0; i < .number_of_y_markers + 1; i++ ) {
+					number marker = .y_marker_increment * i;
+					object m_extents;
+					number x;
+					number y;
+					m_extents = .y_marker_context.textExtents( '' + marker );
+					x = 0;
+					y = .y( .y_marker_increment * i ) + ( .marker_height * 1.1 );
+					.y_marker_context.moveTo( x, y );
+					.y_marker_context.showText( '' + marker );
+				}
+			}
+			// Draw horizontal grid lines to grid surface
+			function draw_horizontal_grid_lines_to_grid_surface {
+				number number_of_horizontal_grid_lines = ( .number_of_y_markers * 2 ) + 1;
+				// Draw background colours
+				.grid_context.setLineWidth( 1 );
+				for( number i = 0; i < number_of_horizontal_grid_lines; i++ ) {
+					number x = 0;
+					number y = .y( .y_grid_line_increment * ( i + 1 ) );
+					number w = .grid_surface_width;
+					number h = .y( .y_grid_line_increment * i ) - .y( .y_grid_line_increment * ( i - 1 ) );
+					object c = ( i % 2 == 0 ? .grid_dark_background_colour : .grid_light_background_colour );
+					.grid_context.setSourceRGB( c.red, c.green, c.blue );
+					.grid_context.rectangle( x, y, w, h );
+					.grid_context.fill();
+				}
+				// Draw the horizontal grid lines
+				.grid_context.setLineWidth( .grid_line_width );
+				.grid_context.setSourceRGB( .grid_line_colour.red, .grid_line_colour.green, .grid_line_colour.blue );
+				for( number i = 0; i < number_of_horizontal_grid_lines; i++ ) {
+					.grid_context.moveTo( 0, .y( .y_grid_line_increment * i ) );
+					.grid_context.lineTo( .grid_surface_width, .y( .y_grid_line_increment * i ) );
+					.grid_context.stroke();
+				}
+			}
+			// Draw the y axis line and the x axis line to the grid surface
+			function draw_axis_lines_to_grid_surface {
+				.grid_context.setSourceRGB( 0.0, 0.0, 0.0 );
+				.grid_context.setLineWidth( 2 );
+				// Draw the y axis line
+				.grid_context.moveTo( 0, 0 );
+				.grid_context.lineTo( 0, .grid_surface_height );
+				.grid_context.stroke();
+				// Draw the x axis line
+				.grid_context.moveTo( 0, .grid_surface_height - 1 );
+				.grid_context.lineTo( .grid_surface_width, .grid_surface_height - 1 );
+				.grid_context.stroke();
+
+			}
+			// Paint the x marker surface to the main canvas surface
+			function paint_x_marker_surface_to_main_surface {
+				.context.save();
+				.context.rotate( -90.0 * ( Math.pi() / 180.0 ) );
+				.context.setSourceSurface( .x_marker_surface, -( .begin_position.x + .height ), .begin_position.y + .y_marker_surface_width );
+				.context.paint();
+				.context.restore();
+			}
+			// Paint the y marker surface to the main canvas surface
+			function paint_y_marker_surface_to_main_surface {
+				.context.setSourceSurface( .y_marker_surface, .begin_position.x, .begin_position.y );
+				.context.paint();
+			}
+			// Paint the grid surface to the main canvas surface
+			function paint_grid_surface_to_main_surface {
+				.context.setSourceSurface( .grid_surface, .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin, .begin_position.y );
+				.context.paint();
 			}
 			
-			function appendYValue( string key, number value )
-			{
-				string valueAsString = "" + value;
-				number valueCharacterLength = valueAsString.length( );
-				
-				if( not .yValues.keyExists( key ) )
-					.yValues[key] = [];
-				
-				.yValues[key][] = value;
-				
-				if( value > .highestYValue )
-					.highestYValue = value;
-				
-				if( valueCharacterLength > .longestYValueLength ) {
-					.longestYValueLength = valueCharacterLength;
-					.longestYValue = valueAsString;
+			function setData( array data ) {
+				if( data.keyExists( 'Rows' ) ) {
+					data['Rows'].each() using ( row ) {
+						.x_markers[] = row[0];
+						row.del( 0 );
+						row.each() using ( value ) {
+							if( value > .highest_value )
+								.highest_value = value;
+						};
+						.values[] = row;
+					};
 				}
 			}
+
+			function x( number x )
+				return x / .x_scale_value;
 			
-			public function x( number x )
-			{
-				return x / .xScaleValue;
+			function y( number y )
+				return .grid_surface_height - ( y / .y_scale_value );
+			
+			function pre_surface_render( object canvas, object context, object begin_position, object limit_position ) {
+				.canvas = canvas;
+				.context = context;
+				.begin_position = begin_position;
+				.limit_position = limit_position;
+				.calculate_item_width();
+				.calculate_item_height();
+				.calculate_highest_value();
+				.calculate_widest_x_marker_width();
+				.calculate_y_marker_surface_size();
+				.calculate_x_marker_surface_size();
+				.calculate_grid_surface_size();
+				.calculate_y_marker_scales();
+				.create_y_marker_objects();
+				.create_x_marker_objects();
+				.create_grid_objects();
 			}
 			
-			public function y( number y )
-			{
-				return .graphHeight - ( y / .yScaleValue );
-			}
-			
-			function drawErrorMessage( object document, object context,
-				object beginPosition, object limitPosition, boolean toMuchData )
-			{
-				object textBeginPosition = new Draw.Position();
-				object textLimitPosition = new Draw.Position();
-				object textEndPosition;
-				object text = new Draw.Item.Text( );
-				string message = "Not enough data provided to draw this chart.";
-				if( toMuchData )
-					message = "To much data provided to draw this chart.";
-				text.setText( message );
-				text.setFont( "Sans Bold 12" );
-				textBeginPosition.x = beginPosition.x + .marginLeft;
-				textBeginPosition.y = beginPosition.y + .marginTop;
-				textLimitPosition.x = limitPosition.x - .marginRight;
-				textLimitPosition.y = limitPosition.y - .marginBottom;
-				textEndPosition = text.render( document, context, textBeginPosition, textLimitPosition );
-				textEndPosition.x += .marginRight;
-				textEndPosition.y += .marginBottom;
-				return textEndPosition;
-			}
-			
-			protected function setup( object canvas, object context,
-				object beginPosition, object endPosition )
-			{
-				number highestYValue = .highestYValue;
-				number xValueLength;
-				number yValueLength;
-				
-				{
-					object text = new Draw.Item.SimpleText();
-					text.setFontFace( "Sans" );
-					text.setFontSize( .fontSize );
-					text.setText( .longestXValue );
-					xValueLength = text.getWidth();
-					xValueLength = xValueLength + ( xValueLength * 0.45 ) + .xValueExtraSpace;
-					.longestXValueWidth = xValueLength;
-					
-					{
-						.fontHeight = text.getHeight() * 2.5;
-						.fontHeight += 0.0;
-					}
-				}
-				
-				{
-					object text = new Draw.Item.SimpleText();
-					text.setFontFace( "Sans" );
-					text.setFontSize( .fontSize );
-					text.setText( .longestYValue );
-					yValueLength = text.getWidth();
-					yValueLength += ( yValueLength * 0.45 ) + .yValueExtraSpace;
-					.longestYValueWidth = yValueLength;
-				}
-				
-				// Check if the requested height fits on the remaining area and
-				// if not begin a new page (if the canvas supports that)
-				if( .heightSet and .height > ( endPosition.y - beginPosition.y - .marginTop - .marginBottom ) )
-				{
-					canvas.newPage();
-					beginPosition.x = canvas.getMarginLeft();
-					beginPosition.y = canvas.getMarginTop();
-					endPosition.x = canvas.getWidth() - canvas.getMarginRight();
-					endPosition.y = canvas.getHeight() - canvas.getMarginBottom();
-				}
-				
-				if( not .widthSet )
-					.width = endPosition.x - beginPosition.x - .marginLeft - .marginRight;
-				
-				if( not .heightSet )
-					.height = endPosition.y - beginPosition.y - .marginTop - .marginBottom;
-				
-				.graphWidth = .width - yValueLength - .yValueRightMargin;
-				.graphHeight = .height - xValueLength;
-				
-				.graphBeginPosition.x = beginPosition.x + .marginLeft + yValueLength + .yValueRightMargin;
-				.graphBeginPosition.y = beginPosition.y + .marginTop;
-				
-				.graphEndPosition.x = .graphBeginPosition.x + .graphWidth;
-				.graphEndPosition.y = .graphBeginPosition.y + .graphHeight;
-				
-				.markers = .graphHeight / .fontHeight;
-				.markers = .markers.floor( );
-				.markers = .markers.round( );
-				
-				if( highestYValue > 0 )
-				{
-					while( highestYValue % 2 != 0 )
-						highestYValue++;
-					
-					if( .markers > highestYValue )
-						.markers = .highestYValue;
-					
-					.markerIncrement = highestYValue / .markers;
-					.markerIncrement = .markerIncrement.ceil( );
-					.markerIncrement = .markerIncrement.round( );
-					
-					while( ( .markers * .markerIncrement ) < highestYValue )
-						.markerIncrement++;
-					
-					while( ( ( .markers - 1 ) * .markerIncrement ) > highestYValue )
-						.markers--;
-				}
-				else
-				{
-					.markerIncrement = 1;
-					.markers = 2;
-				}
-				
-				.yScaleValue = ( .markers * .markerIncrement ) / .graphHeight;
-				
-				.gridIncrement = ( .markerIncrement + 0.0 ) / 2;
-			}
-			
-			function drawYAxis( object document, object context,
-				object beginPosition, object endPosition )
-			{
-				{
-					number horizontalGridLines = .markers * 2;
-					
-					for( number i = 0; i <= horizontalGridLines; i++ )
-					{
-						object line = new Draw.Item.Shape.Line( );
-						object lineBeginPosition = new Draw.Position( );
-						object lineEndPosition = new Draw.Position( );
-						lineBeginPosition.x = beginPosition.x;
-						lineBeginPosition.y = beginPosition.y + .y( .gridIncrement * i );
-						lineEndPosition.x = endPosition.x;
-						lineEndPosition.y = beginPosition.y + .y( .gridIncrement * i );
-						line.setColor( new Draw.Color( 230, 230, 235 ) );
-						line.render( document, context, lineBeginPosition, lineEndPosition );
-					}
-				}
-				
-				{
-					object line = new Draw.Item.Shape.Line( );
-					object lineBeginPosition = new Draw.Position( );
-					object lineEndPosition = new Draw.Position( );
-					lineBeginPosition.x = beginPosition.x;
-					lineBeginPosition.y = beginPosition.y;
-					lineEndPosition.x = beginPosition.x;
-					lineEndPosition.y = endPosition.y;
-					line.render( document, context, lineBeginPosition, lineEndPosition );
-					
-					for( number i = 0; i <= .markers; i++ )
-					{
-						number marker = .markerIncrement * i;
-						
-						object text = new Draw.Item.Text( );
-						object textBeginPosition = new Draw.Position( );
-						object textEndPosition = new Draw.Position( );
-						
-						textBeginPosition.x = beginPosition.x - .longestYValueWidth - .yValueExtraSpace;
-						textBeginPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 3 );
-						textEndPosition.x = beginPosition.x - .yValueRightMargin;
-						//textEndPosition.y = beginPosition.y + .y( .markerIncrement * i ) - ( .fontHeight / 2 ) + .fontHeight;
-						textEndPosition.y = endPosition.y + .longestXValueWidth + .xValueTopMargin + .xValueExtraSpace;
-						
-						text.setText( "${marker}" );
-						text.setFont( "Sans 8" );
-						text.setAlignment( Draw.Item.Text.ALIGN_RIGHT );
-						text.render( document, context, textBeginPosition, textEndPosition );
-					}
-				}
+			function post_surface_render {
+				.draw_axis_lines_to_grid_surface();
+				.paint_x_marker_surface_to_main_surface();
+				.paint_y_marker_surface_to_main_surface();
+				.paint_grid_surface_to_main_surface();
 			}
 		}
 		
-		class LinesChart extends Draw.Item.Chart
-		{
-			function drawXAxis( object document, object context,
-				object beginPosition, object endPosition )
-			{
-				{
-					number verticalGridLines = .xValues.size( ) + 1;
-					
-					for( number i = 1; i <= verticalGridLines; i++ )
-					{
-						object line = new Draw.Item.Shape.Line( );
-						object lineBeginPosition = new Draw.Position( );
-						object lineEndPosition = new Draw.Position( );
-						lineBeginPosition.x = beginPosition.x + .x( i );
-						lineBeginPosition.y = beginPosition.y;
-						lineEndPosition.x = beginPosition.x + .x( i );;
-						lineEndPosition.y = endPosition.y;
-						line.setColor( new Draw.Color( 230, 230, 235 ) );
-						line.render( document, context, lineBeginPosition, lineEndPosition );					
-					}
-				}
-				
-				{
-					object line = new Draw.Item.Shape.Line( );
-					object lineBeginPosition = new Draw.Position( );
-					object lineEndPosition = new Draw.Position( );
-					lineBeginPosition.x = beginPosition.x;
-					lineBeginPosition.y = endPosition.y;
-					lineEndPosition.x = endPosition.x;
-					lineEndPosition.y = endPosition.y;
-					line.render( document, context, lineBeginPosition, lineEndPosition );
-					
-					.xValues.eachWithIndex() using ( xValue, index )
-					{
-						// REMEMBER WE ARE ROTATING THE TEXT SO X AND Y ARE REVERSED
-						
-						object text = new Draw.Item.Text( );
-						object textBeginPosition = new Draw.Position( );
-						object textEndPosition = new Draw.Position( );
-						
-						textBeginPosition.x = document.getHeight() - endPosition.y - .longestXValueWidth - .xValueExtraSpace;
-						textBeginPosition.y = beginPosition.x + .x( index + 1 ) - 5;
-						textEndPosition.x = textBeginPosition.x + .longestXValueWidth + .xValueExtraSpace - .xValueTopMargin;
-						textEndPosition.y = endPosition.x;
-						
-						text.setText( xValue );
-						text.setFont( "Sans 8" );
-						text.setAlignment( Draw.Item.Text.ALIGN_RIGHT );
-						text.rotate( 270 );
-						text.render( document, context, textBeginPosition, textEndPosition );
-					};
+		class BarsChart extends Draw.Item.Chart {
+			// Draw the x marker surface
+			function draw_x_marker_surface {
+				.x_marker_context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.x_marker_context.setFontSize( .marker_font_size );
+				.x_marker_context.setSourceRGB( 0.0, 0.0, 0.0 );
+				.x_markers.eachWithIndex() using ( marker, index ) {
+					object m_extents;
+					number x;
+					number y;
+					m_extents = .x_marker_context.textExtents( '' + marker );
+					// Align the marker to the right
+					x = .x_marker_surface_width - m_extents.width - ( m_extents.width * 0.01 );
+					y = .x( index + 1 + ( index * .values[0].size() ) + ( ( .values[0].size() + 0.0 ) / 2.0 ) ) + .marker_height;
+					.x_marker_context.moveTo( x, y );
+					.x_marker_context.showText( marker );
+				};
+			}
+			// Draw vertical grid lines to grid surface
+			function draw_vertical_grid_lines_to_grid_surface {
+				number vertical_grid_lines = ( .x_markers.size() * .values[0].size() ) + .x_markers.size() + 1;
+				.grid_context.setSourceRGB( .grid_line_colour.red, .grid_line_colour.green, .grid_line_colour.blue );
+				.grid_context.setLineWidth( .grid_line_width );
+				for( number i = 1; i <= vertical_grid_lines; i++ ) {
+					// It looks better with -2 pixels.
+					.grid_context.moveTo( .x( i ) - 2, 0 );
+					.grid_context.lineTo( .x( i ) - 2, .grid_surface_height );
+					.grid_context.stroke();
 				}
 			}
-			
-			public function render( object document, object context,
-				object beginPosition, object limitPosition )
-			{
-				number xValuesCount = .xValues.size( );
-				array positions = [];
-				number graphWidth;
-				
-				// A line chart is not much of a line chart without 2 dots to
-				// draw a line between
-				if( xValuesCount < 2 )
-				{
-					return .drawErrorMessage( document, context, beginPosition,
-						limitPosition, false );
-				}
-				
-				.setup( document, context, beginPosition, limitPosition );
-				
-				graphWidth = .graphEndPosition.x - .graphBeginPosition.x;
-				
-				// We don't draw the chart if not all markers fit on
-				// the x axis
-				if( ( xValuesCount * .fontHeight ) > graphWidth )
-				{
-					return .drawErrorMessage( document, context, beginPosition,
-						limitPosition, true );
-				}
-				
-				.xScaleValue = ( xValuesCount + 1 ) / .graphWidth;
-				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
-				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
-				
-				// Walk through the values and create positions to start and
-				// stop drawing the lines on
-				for( number y = 0; y < .highestYValuesCount; y++ )
-				{
-					for( number x = 0; x < xValuesCount; x++ )
-					{
-						number realX = x + 1; // + 1 because we don't want to start drawing
-						                      // on the y axis. This should be changed to a
-						                      // percentage of the width instead.
-						
-						string key = "${y}";
-						number realY = .yValues[x][y];
-						
-						object position = new Draw.Position( );
-						position.x = .graphBeginPosition.x + .x( realX );
-						position.y = .graphBeginPosition.y + .y( realY );
-						
-						if( not positions.keyExists( key ) )
-							positions[key] = [];
-						
-						positions[key][] = position;
-					}
-				}
-				
-				positions.eachWithIndex() using ( _positions, color )
-				{
-					number _positionsCount = _positions.size( );
-					
-					_positions.eachWithIndex( ) using ( lineBeginPosition, index )
-					{
-						if( index + 1 <= _positionsCount - 1 )
-						{
-							object lineEndPosition = _positions[index+1];
-							object line = new Draw.Item.Shape.Line( );
-							line.setColor( .colors[color] );
-							line.render( document, context, lineBeginPosition, lineEndPosition );
-						}
+			// Draw the bars to the grid surface
+			function draw_bars_to_grid_surface {
+				number vertical_grid_lines = ( .x_markers.size() * .values[0].size() ) + .x_markers.size() + 1;
+				.grid_context.setLineWidth( 0.5 );
+				.values.eachWithIndex() using ( row, group_index ) {
+					row.eachWithIndex() using ( value, value_index ) {
+						number x = .x( group_index + 1 + ( group_index * .values[0].size() ) + value_index ) - 2;
+						number y = .y( value );
+						number w = .grid_surface_width / vertical_grid_lines;
+						number h = .grid_surface_height - .y( value );
+						.grid_context.setSourceRGB( .colours[value_index].red, .colours[value_index].green, .colours[value_index].blue );
+						.grid_context.rectangle( x, y, w, h );
+						.grid_context.fill();
+						// Draw a black border around the bar
+						.grid_context.setSourceRGB( 0.0, 0.0, 0.0 );
+						.grid_context.rectangle( x, y, w, h );
+						.grid_context.stroke();
 					};
 				};
+			}
+			function render( object canvas, object context, object begin_position, object limit_position ) {
+				.pre_surface_render( canvas, context, begin_position, limit_position );
+
+				{
+					number number_of_groups = .x_markers.size() + 0.0;
+					number number_of_bars_in_group = .values[0].size() + 0.0;
+					.x_scale_value = ( ( number_of_groups * number_of_bars_in_group + 1 ) + number_of_groups ) / .grid_surface_width;
+				}
 				
-				return new Draw.Position( beginPosition.x + .width + .marginLeft + .marginRight,
-					beginPosition.y + .height + .marginTop + .marginBottom );
+				.draw_y_marker_surface();
+				.draw_x_marker_surface();
+				.draw_horizontal_grid_lines_to_grid_surface();
+
+				.draw_vertical_grid_lines_to_grid_surface();
+				.draw_bars_to_grid_surface();
+
+				.post_surface_render();
+
+				return new Draw.Position( begin_position.x + .marginLeft + .width + .marginRight, begin_position.y + .marginTop + .height + .marginBottom );
 			}
 		}
 		
-		class BarsChart extends Draw.Item.Chart
-		{
-			function drawXAxis( object document, object context,
-				object beginPosition, object endPosition )
-			{
-				{
-					number xValuesCount = .xValues.size( );
-					number verticalGridLines = ( xValuesCount * .highestYValuesCount ) + xValuesCount + 1;
-					
-					for( number i = 1; i <= verticalGridLines; i++ )
-					{
-						object line = new Draw.Item.Shape.Line( );
-						object lineBeginPosition = new Draw.Position( );
-						object lineEndPosition = new Draw.Position( );
-						lineBeginPosition.x = beginPosition.x + .x( i );
-						lineBeginPosition.y = beginPosition.y;
-						lineEndPosition.x = beginPosition.x + .x( i );;
-						lineEndPosition.y = endPosition.y;
-						line.setColor( new Draw.Color( 230, 230, 235 ) );
-						line.render( document, context, lineBeginPosition, lineEndPosition );					
-					}
-				}
-				
-				{
-					object line = new Draw.Item.Shape.Line( );
-					object lineBeginPosition = new Draw.Position( );
-					object lineEndPosition = new Draw.Position( );
-					lineBeginPosition.x = beginPosition.x;
-					lineBeginPosition.y = endPosition.y;
-					lineEndPosition.x = endPosition.x;
-					lineEndPosition.y = endPosition.y;
-					line.render( document, context, lineBeginPosition, lineEndPosition );
-					
-					.xValues.eachWithIndex() using ( xValue, index )
-					{
-						// REMEMBER WE ROTATE THE TEXT SO X AND Y ARE REVERSED
-						
-						object text = new Draw.Item.Text( );
-						object textBeginPosition = new Draw.Position( );
-						object textEndPosition = new Draw.Position( );
-						
-						textBeginPosition.x = document.getHeight() - endPosition.y - .longestXValueWidth - .xValueExtraSpace;
-						textBeginPosition.y = beginPosition.x + .x( ( index + 1 ) + ( index * .highestYValuesCount ) );
-						textEndPosition.x = textBeginPosition.x + .longestXValueWidth + .xValueExtraSpace - .xValueTopMargin;
-						textEndPosition.y = endPosition.x;
-						
-						text.setText( xValue );
-						text.setFont( "Sans 8" );
-						text.setAlignment( Draw.Item.Text.ALIGN_RIGHT );
-						text.rotate( 270 );
-						text.render( document, context, textBeginPosition, textEndPosition );
-					};
+		class LinesChart extends Draw.Item.Chart {
+			function draw_x_marker_surface {
+				.x_marker_context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.x_marker_context.setFontSize( .marker_font_size );
+				.x_marker_context.setSourceRGB( 0.0, 0.0, 0.0 );
+				.x_markers.eachWithIndex() using ( marker, index ) {
+					number x = 0;
+					number y = .x( index + 1 ) + .marker_height;
+					.x_marker_context.moveTo( x, y );
+					.x_marker_context.showText( '' + marker );
+				};
+			}
+			function draw_vertical_grid_lines_to_grid_surface {
+				number number_of_x_markers = .x_markers.size();
+				number vertical_grid_lines = number_of_x_markers + 1;
+				.grid_context.setSourceRGB( .grid_line_colour.red, .grid_line_colour.green, .grid_line_colour.blue );
+				.grid_context.setLineWidth( .grid_line_width );
+				for( number i = 1; i <= vertical_grid_lines; i++ ) {
+					// It looks better with -2 pixels
+					.grid_context.moveTo( .x( i ) -2, 0 );
+					.grid_context.lineTo( .x( i ) -2, .grid_surface_height );
+					.grid_context.stroke();
 				}
 			}
-			
-			function render( object document, object context,
-				object beginPosition, object limitPosition )
-			{
-				number xValuesCount = .xValues.size( );
-				number graphWidth;
-				
-				.setup( document, context, beginPosition, limitPosition );
-				
-				graphWidth = .graphEndPosition.x - .graphBeginPosition.x;
-				
-				if( ( xValuesCount * .fontHeight ) > graphWidth )
-				{
-					return .drawErrorMessage( document, context, beginPosition,
-						limitPosition, true );
-				}
-				
-				// xValuesCount = number of groups
-				// .highestYValuesCount = number of bars in group
-				// * 2 because we want space between the bars groups
-				// + 1 is needed, trust me
-				.xScaleValue = ( ( xValuesCount * .highestYValuesCount ) + xValuesCount + 1 ) / .graphWidth;
-				
-				.drawYAxis( document, context, .graphBeginPosition, .graphEndPosition );
-				.drawXAxis( document, context, .graphBeginPosition, .graphEndPosition );
-				
-				for( number i = 0; i < .xValues.size( ); i++ )
-				{
-					if( .yValues.size( ) - 1 >= i )
-					{
-					array yValues = .yValues[i];
-					
-					yValues.eachWithIndex() using ( yValue, index )
-					{
-						// + 1 because we don't want to start draw right beside the y axis
-						number realX = ( ( i + 1 ) + ( i * .highestYValuesCount ) ) + index;
-						
-						number realY = yValue;
-						
-						object rectangle = new Draw.Item.Shape.Rectangle( );
-						object rectangleBeginPosition = new Draw.Position( );
-						object rectangleEndPosition = new Draw.Position( );
-						
-						rectangleBeginPosition.x = .graphBeginPosition.x + .x( realX );
-						rectangleBeginPosition.y = .graphBeginPosition.y + .y( realY );
-						
-						rectangleEndPosition.x = .graphBeginPosition.x + .x( realX + 1 );
-						rectangleEndPosition.y = .graphEndPosition.y - 1;
-						
-						rectangle.setFilled( true );
-						rectangle.setColor( .colors[index] );
-						
-						rectangle.render( document, context, rectangleBeginPosition, rectangleEndPosition );
-					};
+			function draw_lines_to_grid_surface {
+				number number_of_groups = .values.size();
+				number last_group_index = number_of_groups - 1;
+				.grid_context.setLineWidth( 1 );
+				.values.eachWithIndex() using ( group, group_index ) {
+					if( group_index < last_group_index ) {
+						number next_group_index = group_index + 1;
+						group.eachWithIndex() using ( value, value_index ) {
+							number next_value = .values[next_group_index][value_index];
+							number start_x = .x( group_index + 1 ) - 2; // +1 because we don't want to draw directly on the y axis
+							number start_y = .y( value );
+							number end_x = .x( group_index + 2 ) - 2;
+							number end_y = .y( next_value );
+							object c = .colours[value_index];
+							.grid_context.setSourceRGB( c.red, c.green, c.blue );
+							.grid_context.moveTo( start_x, start_y );
+							.grid_context.lineTo( end_x, end_y );
+							.grid_context.stroke();
+						};
 					}
+				};
+			}
+			function render( object canvas, object context, object begin_position, object limit_position ) {
+				.pre_surface_render( canvas, context, begin_position, limit_position );
+
+				{
+					number number_of_x_markers = .x_markers.size();
+					.x_scale_value = ( number_of_x_markers + 1 ) / .grid_surface_width;
 				}
 				
-				return new Draw.Position( beginPosition.x + .width + .marginLeft + .marginRight,
-					beginPosition.y + .height + .marginTop + .marginBottom );
+				.draw_y_marker_surface();
+				.draw_x_marker_surface();
+				
+				.draw_horizontal_grid_lines_to_grid_surface();
+				.draw_vertical_grid_lines_to_grid_surface();
+				.draw_lines_to_grid_surface();
+				
+				.post_surface_render();
+				
+				return new Draw.Position( begin_position.x + .marginLeft + .width + .marginRight, begin_position.y + .marginTop + .height + .marginBottom );
 			}
 		}
 		
