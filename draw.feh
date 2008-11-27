@@ -4,6 +4,33 @@ uses 'image';
 uses 'math';
 uses 'pango';
 
+namespace modifies String {
+	//array _textExtentsForUpperCaseM;
+	function _createTextExtents( string str, number size ) {
+		object textExtents;
+		//if( not ._textExtentsForUpperCaseM.keyExists("${size}") ) {
+			object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 0, 0 );
+			object context = new Cairo.Context( surface );
+			context.selectFontFace( 'Sans', Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+			context.setFontSize( size );
+			textExtents = context.textExtents( str );
+			//._textExtentsForUpperCaseM["${size}"] = textExtents;
+		//} else
+		//	textExtents = ._textExtentsForUpperCaseM["${size}"];
+		return textExtents;
+	}
+	function width( string str, number size ) {
+		number width = ._createTextExtents( str, size ).width;
+		//if( str.isNumber() )
+			//return width + ( ( width * 0.1 ) * str.utf8Length() );
+		//return width + ( width * 0.01 );
+		//return str.utf8Length() * ._createTextExtents( str, size ).width;
+		return width + 5;
+	}
+	function height( string str, number size )
+		return ._createTextExtents( str, size ).height;
+}
+
 /**
  * @namespace EasyDraw
  * @brief Contains classes for drawing images and documents
@@ -1095,10 +1122,12 @@ namespace Draw
 			boolean width_set;
 			boolean height_set;
 			number marker_font_size;
+			string marker_font_face;
 			
 			constructor {
 				.width_set = false;
 				.height_set = false;
+				.marker_font_face = 'Sans';
 				.marker_font_size = 10;
 				.y_marker_surface_right_margin = 10;
 				.x_marker_surface_top_margin = 10;
@@ -1144,22 +1173,13 @@ namespace Draw
 			}
 			// Calculate the width of the highest value and marker height
 			function calculate_highest_value {
-				object extents;
-				.context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
-				.context.setFontSize( .marker_font_size );
-				extents = .context.textExtents( '' + .highest_value );
-				.highest_value_width = extents.width + ( extents.width * 0.1 );
-				.marker_height = extents.height;
+				.highest_value_width = String.width( "${.highest_value}", .marker_font_size );
+				.marker_height = String.height( "${.highest_value}", .marker_font_size );
 			}
 			// Calculate the width of the widest x marker
 			function calculate_widest_x_marker_width {
-				.context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
-				.context.setFontSize( .marker_font_size );
 				.x_markers.each() using ( m ) {
-					object m_extents;
-					number m_width;
-					m_extents = .context.textExtents( '' + m );
-					m_width = m_extents.width + ( m_extents.width * 0.1 );
+					number m_width = m.width( .marker_font_size );
 					if( m_width > .widest_x_marker_width ) {
 						.widest_x_marker_width = m_width;
 					}
@@ -1175,21 +1195,17 @@ namespace Draw
 				number max_width = .height * 0.6;
 				if( .widest_x_marker_width > max_width ) {
 					array new_x_markers = [];
-					.context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
-					.context.setFontSize( .marker_font_size );
 					.x_markers.each() using ( marker ) {
 						string m = '' + marker;
-						object m_extents;
-						number m_width;
-						m_extents = .context.textExtents( m );
-						m_width = m_extents.width + ( m_extents.width * 0.1 );
+						number m_width = m.width( .marker_font_size );
 						if( m_width > max_width ) {
-							number m_length = m.length() - 3;
+							// Remove 3 characters for ...
+							m = m.utf8Slice( m.utf8Length() - 4 );
+							m = m.trim( ' ' );
+							m_width = m.width( .marker_font_size );
 							while( m_width > max_width ) {
-								m_length = m_length - 1;
-								m = m[..m_length];
-								m_extents = .context.textExtents( m );
-								m_width = m_extents.width + ( m_extents.width * 0.1 );
+								m = m.utf8Slice( m.utf8Length() - 2 );
+								m_width = m.width( .marker_font_size );
 							}
 							m = m.trim( ' ' ) + '...';
 						}
@@ -1201,12 +1217,12 @@ namespace Draw
 				} else
 					.x_marker_surface_width = .widest_x_marker_width;
 					
-				.x_marker_surface_height = .width - .y_marker_surface_width;
+				.x_marker_surface_height = .width - .y_marker_surface_width - .y_marker_surface_right_margin;
 			}
 			// Calculate the width and the height of the grid surface
 			function calculate_grid_surface_size {
 				.grid_surface_width = .width - .y_marker_surface_width - .y_marker_surface_right_margin;
-				.grid_surface_height = .height - .x_marker_surface_width - .x_marker_surface_top_margin;
+				.grid_surface_height = .height - .x_marker_surface_width - .x_marker_surface_top_margin - ( .marker_height / 2.0 );
 			}
 			// Calculate how many y markers to show and what the increment between them should be
 			function calculate_y_marker_scales {
@@ -1264,16 +1280,15 @@ namespace Draw
 			}
 			// Draw the y axis marker surface
 			function draw_y_marker_surface {
-				.y_marker_context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.y_marker_context.selectFontFace( .marker_font_face, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
 				.y_marker_context.setFontSize( .marker_font_size );
 				.y_marker_context.setSourceRGB( 0.0, 0.0, 0.0 );
 				for( number i = 0; i < .number_of_y_markers + 1; i++ ) {
 					number marker = .y_marker_increment * i;
-					object m_extents;
 					number x;
 					number y;
-					m_extents = .y_marker_context.textExtents( '' + marker );
-					x = 0;
+					// Align to the right
+					x = .y_marker_surface_width - String.width( "${marker}", .marker_font_size );
 					y = .y( .y_marker_increment * i ) + ( .marker_height * 1.1 );
 					.y_marker_context.moveTo( x, y );
 					.y_marker_context.showText( '' + marker );
@@ -1319,9 +1334,11 @@ namespace Draw
 			}
 			// Paint the x marker surface to the main canvas surface
 			function paint_x_marker_surface_to_main_surface {
+				number x = - ( .begin_position.y + .height );
+				number y = .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin;
 				.context.save();
 				.context.rotate( -90.0 * ( Math.pi() / 180.0 ) );
-				.context.setSourceSurface( .x_marker_surface, -( .begin_position.x + .height ), .begin_position.y + .y_marker_surface_width );
+				.context.setSourceSurface( .x_marker_surface, x, y );
 				.context.paint();
 				.context.restore();
 			}
@@ -1332,7 +1349,9 @@ namespace Draw
 			}
 			// Paint the grid surface to the main canvas surface
 			function paint_grid_surface_to_main_surface {
-				.context.setSourceSurface( .grid_surface, .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin, .begin_position.y );
+				number x = .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin;
+				number y = .begin_position.y + ( .marker_height / 2.0 );
+				.context.setSourceSurface( .grid_surface, x, y );
 				.context.paint();
 			}
 			
@@ -1349,7 +1368,17 @@ namespace Draw
 					};
 				}
 			}
-
+			
+			function setWidth( number width ) {
+				.width = width;
+				.width_set = true;
+			}
+			
+			function setHeight( number height ) {
+				.height = height;
+				.height_set = true;
+			}
+			
 			function x( number x )
 				return x / .x_scale_value;
 			
@@ -1385,17 +1414,19 @@ namespace Draw
 		class BarsChart extends Draw.Item.Chart {
 			// Draw the x marker surface
 			function draw_x_marker_surface {
-				.x_marker_context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				number number_of_bars_in_group = .values[0].size();
+				number bar_width = .x( 2 ) - .x( 1 );
+				.x_marker_context.selectFontFace( .marker_font_face, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
 				.x_marker_context.setFontSize( .marker_font_size );
 				.x_marker_context.setSourceRGB( 0.0, 0.0, 0.0 );
 				.x_markers.eachWithIndex() using ( marker, index ) {
-					object m_extents;
 					number x;
 					number y;
-					m_extents = .x_marker_context.textExtents( '' + marker );
+					number m_width = marker.width( .marker_font_size );
 					// Align the marker to the right
-					x = .x_marker_surface_width - m_extents.width - ( m_extents.width * 0.01 );
-					y = .x( index + 1 + ( index * .values[0].size() ) + ( ( .values[0].size() + 0.0 ) / 2.0 ) ) + .marker_height;
+					x = .x_marker_surface_width - m_width;
+					y = .x( index + 1 + ( index * number_of_bars_in_group ) ) - 2 + ( bar_width / 2.0 ) + ( .marker_height / 2.0 );
+					// + ( ( .values[0].size() + 0.0 ) / 2.0 ) );// + .marker_height;
 					.x_marker_context.moveTo( x, y );
 					.x_marker_context.showText( marker );
 				};
@@ -1434,6 +1465,26 @@ namespace Draw
 			}
 			function render( object canvas, object context, object begin_position, object limit_position ) {
 				.pre_surface_render( canvas, context, begin_position, limit_position );
+				
+				if( .values.size() == 0 ) {
+					object text = new Draw.Item.Text();
+					text.setText( 'No enough data provided to draw this chart.' );
+					return text.render( canvas,
+					                    context,
+					                    new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
+					                    new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );
+				}
+				{
+					number x_markers_width = .x_markers.size() * ( .marker_height + ( .marker_height / 2 ) );
+					if( ( x_markers_width ) > .grid_surface_width ) {
+						object text = new Draw.Item.Text();
+						text.setText( 'To much data provided to draw this chart.' );
+						return text.render( canvas,
+							                context,
+							                new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
+							                new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );						
+					}
+				}
 
 				{
 					number number_of_groups = .x_markers.size() + 0.0;
@@ -1450,18 +1501,18 @@ namespace Draw
 
 				.post_surface_render();
 
-				return new Draw.Position( begin_position.x + .marginLeft + .width + .marginRight, begin_position.y + .marginTop + .height + .marginBottom );
+				return new Draw.Position( .begin_position.x + .marginLeft + .width + .marginRight, .begin_position.y + .marginTop + .height + .marginBottom );
 			}
 		}
 		
 		class LinesChart extends Draw.Item.Chart {
 			function draw_x_marker_surface {
-				.x_marker_context.selectFontFace( "Sans", Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+				.x_marker_context.selectFontFace( .marker_font_face, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
 				.x_marker_context.setFontSize( .marker_font_size );
 				.x_marker_context.setSourceRGB( 0.0, 0.0, 0.0 );
 				.x_markers.eachWithIndex() using ( marker, index ) {
-					number x = 0;
-					number y = .x( index + 1 ) + .marker_height;
+					number x = .x_marker_surface_width - marker.width( .marker_font_size );
+					number y = .x( index + 1 );
 					.x_marker_context.moveTo( x, y );
 					.x_marker_context.showText( '' + marker );
 				};
@@ -1481,7 +1532,7 @@ namespace Draw
 			function draw_lines_to_grid_surface {
 				number number_of_groups = .values.size();
 				number last_group_index = number_of_groups - 1;
-				.grid_context.setLineWidth( 1 );
+				.grid_context.setLineWidth( 2 );
 				.values.eachWithIndex() using ( group, group_index ) {
 					if( group_index < last_group_index ) {
 						number next_group_index = group_index + 1;
@@ -1503,6 +1554,26 @@ namespace Draw
 			function render( object canvas, object context, object begin_position, object limit_position ) {
 				.pre_surface_render( canvas, context, begin_position, limit_position );
 
+				if( .values.size() < 2 ) {
+					object text = new Draw.Item.Text();
+					text.setText( 'No enough data provided to draw this chart.' );
+					return text.render( canvas,
+					                    context,
+					                    new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
+					                    new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );
+				}
+				{
+					number x_markers_width = .x_markers.size() * ( .marker_height + ( .marker_height / 2 ) );
+					if( ( x_markers_width ) > .grid_surface_width ) {
+						object text = new Draw.Item.Text();
+						text.setText( 'To much data provided to draw this chart.' );
+						return text.render( canvas,
+							                context,
+							                new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
+							                new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );						
+					}
+				}
+
 				{
 					number number_of_x_markers = .x_markers.size();
 					.x_scale_value = ( number_of_x_markers + 1 ) / .grid_surface_width;
@@ -1517,7 +1588,7 @@ namespace Draw
 				
 				.post_surface_render();
 				
-				return new Draw.Position( begin_position.x + .marginLeft + .width + .marginRight, begin_position.y + .marginTop + .height + .marginBottom );
+				return new Draw.Position( .begin_position.x + .marginLeft + .width + .marginRight, .begin_position.y + .marginTop + .height + .marginBottom );
 			}
 		}
 		
@@ -1534,8 +1605,7 @@ namespace Draw
 			protected number borderWidth;
 			protected object borderColor;
 			
-			public function constructor( )
-			{
+			constructor {
 				.items = [ ];
 				.columns = 1;
 				.columnBackgroundColors = [ ];
@@ -1549,7 +1619,7 @@ namespace Draw
 			 * @brief Add an item to the container
 			 * @param object item the item to add
 			 */
-			public function renderItem( object item )
+			function renderItem( object item )
 				.items[ ] = item;
 			
 			/**
@@ -1558,7 +1628,7 @@ namespace Draw
 			 * @brief Set the number of columns this container have
 			 * @param number columns the number of columns
 			 */
-			public function setColumns( number columns )
+			function setColumns( number columns )
 				.columns = columns;
 			
 			/**
@@ -1567,12 +1637,10 @@ namespace Draw
 			 * @brief Set the background colors for the columns
 			 * @param array backgroundColors an array of colors in hexadecimal values
 			 */
-			public function setColumnBackgroundColors( array backgroundColors )
-			{
-				backgroundColors.eachWithIndex( ) using ( value, index )
-				{
-					number num = index + 1;
-					.columnBackgroundColors[ "${num}" ] = value;
+			function setColumnBackgroundColors( array backgroundColors ) {
+				backgroundColors.eachWithIndex( ) using ( value, index ) {
+					number columnNumber = index + 1;
+					.columnBackgroundColors[ "${columnNumber}" ] = value;
 				};
 			}
 			/**
@@ -1581,7 +1649,7 @@ namespace Draw
 			 * @brief Set the width of the border around the columns
 			 * @param number borderWidth the width of the border
 			 */
-			public function setBorderWidth( number borderWidth )
+			function setBorderWidth( number borderWidth )
 				.borderWidth = borderWidth;
 			
 			/**
@@ -1590,80 +1658,92 @@ namespace Draw
 			 * @brief Set the color of the border
 			 * @param object color an instance of Draw.Color object
 			 */
-			public function setBorderColor( object color )
+			function setBorderColor( object color )
 				.borderColor = color;
 			
-			public function render( object document, object context,
-				object beginPosition, object limitPosition )
-			{
+			function render( object document, object context, object beginPosition, object limitPosition ) {
 				object endPosition = new Draw.Position( beginPosition.x, beginPosition.y );
-				object surroundingRectangle = new Draw.Item.Shape.Rectangle( );
-				object latestItemEndPosition = new Draw.Position( );
-				object itemBeginPosition = new Draw.Position( );
-				object itemLimitPosition = new Draw.Position( );
+				object surroundingRectangle = new Draw.Item.Shape.Rectangle();
+				object latestItemEndPosition = new Draw.Position();
+				object itemBeginPosition = new Draw.Position();
+				object itemLimitPosition = new Draw.Position();
 				object imageSurface;
 				object imageContext;
-				number itemsSize = .items.size( );
+				number itemsSize = .items.size();
 				number totalWidth;
 				number itemWidth;
 				number columnNum = 1;
 				number columnYPos;
-				array columnBeginPositions = [ ];
-				array columnItems = [ ];
-				array itemLimitPositions = [ ];
+				array columnBeginPositions = [];
+				array columnItems = [];
+				array itemLimitPositions = [];
+				boolean createNewPage = false;
 				
 				if( itemsSize == 0 )
 					return beginPosition;
 				
-				imageSurface = new Cairo.ImageSurface( Cairo.FORMAT_ARGB32,
-					document.getWidth( ), document.getHeight( ) );
+				imageSurface = new Cairo.ImageSurface( Cairo.FORMAT_ARGB32, document.getWidth(), document.getHeight() );
 				imageContext = new Cairo.Context( imageSurface );
 				
-				totalWidth = ( limitPosition.x - .marginRight )
-					- ( beginPosition.x + .marginLeft );
+				totalWidth = ( limitPosition.x - .marginRight ) - ( beginPosition.x + .marginLeft );
 				itemWidth = totalWidth / .columns;
 				
 				latestItemEndPosition.y = beginPosition.y + .marginTop;
 				columnYPos = latestItemEndPosition.y;
 				itemLimitPosition.y = limitPosition.y - .marginBottom;
 				
-				.items.eachWithIndex( ) using ( item, itemsIndex )
-				{
-					if( columnNum > .columns )
-					{
+				.items.eachWithIndex( ) using ( item, itemsIndex ) {
+					if( columnNum > .columns ) {
+						createNewPage = false;
 						columnNum = 1;
 						itemBeginPosition.x = beginPosition.x + .marginLeft;
 						columnYPos = endPosition.y;
-						columnBeginPositions = [ ];
-						columnItems = [ ];
-						itemLimitPositions = [ ];
-					}
-					else
-						itemBeginPosition.x = ( beginPosition.x + .marginLeft )
-							+ ( itemWidth * ( columnNum - 1 ) );
+						columnBeginPositions = [];
+						columnItems = [];
+						itemLimitPositions = [];
+					} else
+						itemBeginPosition.x = ( beginPosition.x + .marginLeft ) + ( itemWidth * ( columnNum - 1 ) );
 					
 					itemBeginPosition.y = columnYPos;
-					itemLimitPosition.x = ( beginPosition.x + .marginLeft )
-						+ ( itemWidth * columnNum );
+					itemLimitPosition.x = ( beginPosition.x + .marginLeft ) + ( itemWidth * columnNum );
 					
-					latestItemEndPosition = item.render( document, imageContext,
-						itemBeginPosition, itemLimitPosition );
+					latestItemEndPosition = item.render( document,
+					                                     imageContext,
+					                                     itemBeginPosition,
+					                                     new Draw.Position( itemLimitPosition.x, itemLimitPosition.y + document.getHeight() ) );
 					
 					endPosition.x = latestItemEndPosition.x;
-					if( latestItemEndPosition.y > endPosition.y )
+					
+					if( latestItemEndPosition.y > itemLimitPosition.y ) {
+						// New page should be created before drawing the row this item is part of
+						// First correct the all the already tested colymns in this row positions to the top of the new page
+						array newColumnBeginPositions = [];
+						columnBeginPositions.each() using ( position ) {
+							newColumnBeginPositions[] = new Draw.Position( position.x, document.getMarginTop() );
+						};
+						columnBeginPositions = newColumnBeginPositions;
+						// Set the current item's position to the top of the new page
+						itemBeginPosition.y = document.getMarginTop();
+						// Redraw the item to get its end position
+						latestItemEndPosition = item.render( document, imageContext, itemBeginPosition, itemLimitPosition );
+						// Set the end position of the rows to be the end position of this item
+						endPosition.y = latestItemEndPosition.y;
+						// Tell us that we should create a new page later
+						createNewPage = true;
+					} else if( latestItemEndPosition.y > endPosition.y )
 						endPosition.y = latestItemEndPosition.y;
 					
-					columnBeginPositions[ ] = new Draw.Position( itemBeginPosition.x, itemBeginPosition.y );
-					itemLimitPositions[ ] = new Draw.Position( itemLimitPosition.x, itemLimitPosition.y );
-					columnItems[ ] = item;
+					columnBeginPositions[] = new Draw.Position( itemBeginPosition.x, itemBeginPosition.y );
+					itemLimitPositions[] = new Draw.Position( itemLimitPosition.x, itemLimitPosition.y );
+					columnItems[] = item;
 					
 					// If this is the last column in the row the borders are
 					// drawn around the columns, the background color and then
 					// the item itself.
-					if( columnNum == .columns or itemsIndex == ( itemsSize - 1 ) )
-					{
-						columnBeginPositions.eachWithIndex( ) using ( columnBeginPosition, index )
-						{
+					if( columnNum == .columns or itemsIndex == ( itemsSize - 1 ) ) {
+						if( createNewPage )
+							document.newPage();
+						columnBeginPositions.eachWithIndex( ) using ( columnBeginPosition, index ) {
 							object item = columnItems[ index ];
 							object currentItemLimitPosition = itemLimitPositions[ index ];
 							object backgroundRectangle = new Draw.Item.Shape.Rectangle( );
@@ -1678,8 +1758,7 @@ namespace Draw
 							borderRectangle.setBeginPosition( columnBeginPosition );
 							borderRectangle.render( document, context, limitPosition );
 							
-							if( .columnBackgroundColors.keyExists( "${num}" ) )
-							{
+							if( .columnBackgroundColors.keyExists( "${num}" ) ) {
 								object bgColor = .columnBackgroundColors[ "${num}" ];
 								backgroundRectangle.setFilled( true );
 								backgroundRectangle.setWidth( itemWidth );
@@ -1689,8 +1768,7 @@ namespace Draw
 								backgroundRectangle.render( document, context, limitPosition );
 							}
 							
-							item.render( document, context, columnBeginPosition,
-								currentItemLimitPosition );
+							item.render( document, context, columnBeginPosition, currentItemLimitPosition );
 						};
 					}
 					
@@ -1700,9 +1778,10 @@ namespace Draw
 				// Draw a surrounding rectangle to make the border a little less ugly
 				surroundingRectangle.setLineWidth( .borderWidth );
 				surroundingRectangle.setColor( .borderColor );
-				surroundingRectangle.render( document, context,
-					new Draw.Position( beginPosition.x + .marginLeft, beginPosition.y + .marginTop ),
-					new Draw.Position( limitPosition.x - .marginRight, endPosition.y ) );
+				surroundingRectangle.render( document,
+				                             context,
+				                             new Draw.Position( beginPosition.x + .marginLeft, beginPosition.y + .marginTop ),
+				                             new Draw.Position( limitPosition.x - .marginRight, endPosition.y ) );
 				
 				endPosition.y = endPosition.y + .marginBottom;
 				
