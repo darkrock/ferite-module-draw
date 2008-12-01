@@ -5,26 +5,15 @@ uses 'math';
 uses 'pango';
 
 namespace modifies String {
-	//array _textExtentsForUpperCaseM;
 	function _createTextExtents( string str, number size ) {
-		object textExtents;
-		//if( not ._textExtentsForUpperCaseM.keyExists("${size}") ) {
-			object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 0, 0 );
-			object context = new Cairo.Context( surface );
-			context.selectFontFace( 'Sans', Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
-			context.setFontSize( size );
-			textExtents = context.textExtents( str );
-			//._textExtentsForUpperCaseM["${size}"] = textExtents;
-		//} else
-		//	textExtents = ._textExtentsForUpperCaseM["${size}"];
-		return textExtents;
+		object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 0, 0 );
+		object context = new Cairo.Context( surface );
+		context.selectFontFace( 'Sans', Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+		context.setFontSize( size );
+		return context.textExtents( str );
 	}
 	function width( string str, number size ) {
 		number width = ._createTextExtents( str, size ).width;
-		//if( str.isNumber() )
-			//return width + ( ( width * 0.1 ) * str.utf8Length() );
-		//return width + ( width * 0.01 );
-		//return str.utf8Length() * ._createTextExtents( str, size ).width;
 		return width + 5;
 	}
 	function height( string str, number size )
@@ -172,6 +161,8 @@ namespace Draw
 			
 			.latestItemEndPosition = new Draw.Position( 0, 0 );
 			.itemsRendered = 0;
+			
+			return true;
 		}
 		
 		protected function create( number size )
@@ -201,7 +192,7 @@ namespace Draw
 					height = 841.89;
 			}
 			
-			.create( width, height );
+			return .create( width, height );
 		}
 		
 		/**
@@ -406,8 +397,8 @@ namespace Draw
 		
 		public function constructor( string filename, number width, number height )
 		{
-			super.create( width, height );
-			.create( filename );
+			if( ( not super.create( width, height ) ) or ( not .create( filename ) ) )
+				return null;
 		}
 		
 		/**
@@ -419,14 +410,17 @@ namespace Draw
 		 */
 		public function constructor( string filename, number size )
 		{
-			super.create( size );
-			.create( filename );
+			if( ( not super.create( size ) ) or ( not .create( filename ) ) )
+				return null;
 		}
 		
 		private function create( string filename )
 		{
 			.context = new Cairo.Context( new Cairo.PDFSurface( filename, .width, .height ) );
+			if( not .context )
+				return false;
 			.pages = 1;
+			return true;
 		}
 		
 		public function newPage( )
@@ -458,8 +452,8 @@ namespace Draw
 		
 		public function constructor( string filename, number width, number height )
 		{
-			super.create( width, height );
-			.create( filename );
+			if( ( not super.create( width, height ) ) or ( not .create( filename ) ) )
+				return null;
 		}
 		
 		/**
@@ -471,8 +465,8 @@ namespace Draw
 		 */
 		public function constructor( string filename, number size )
 		{
-			super.create( size );
-			.create( filename );
+			if( ( not super.create( size ) ) or ( not .create( filename ) ) )
+				return null;
 		}
 		
 		private function create( string filename )
@@ -484,6 +478,7 @@ namespace Draw
 			.context.paint( );
 			.context.setSourceRGB( 0, 0, 0 );
 			.surface.writeToPNG( .filename );
+			return true;
 		}
 		
 		function renderItem( object item )
