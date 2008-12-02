@@ -141,6 +141,7 @@ namespace Draw
 		protected number marginLeft;
 		protected number marginRight;
 		protected string background;
+		protected object surface;
 		protected object context;
 		
 		protected function create( number width, number height )
@@ -336,6 +337,7 @@ namespace Draw
 			{
 				item.render( self, .context, limitPosition );
 			}
+			.surface.flush();
 		}
 		
 		/**
@@ -376,6 +378,9 @@ namespace Draw
 		 * @brief Begins a new page in a document
 		 */
 		public function newPage( );
+		
+		function finish
+			.surface.finish();
 	}
 	/**
 	 * @end
@@ -416,7 +421,8 @@ namespace Draw
 		
 		private function create( string filename )
 		{
-			.context = new Cairo.Context( new Cairo.PDFSurface( filename, .width, .height ) );
+			.surface = new Cairo.PDFSurface( filename, .width, .height );
+			.context = new Cairo.Context( .surface );
 			if( not .context )
 				return false;
 			.pages = 1;
@@ -442,7 +448,6 @@ namespace Draw
 	 */
 	class PNG extends Draw.Base
 	{
-		private object surface;
 		private string filename;
 		
 		public function constructor( )
