@@ -21,7 +21,7 @@ namespace modifies String {
 }
 
 /**
- * @namespace EasyDraw
+ * @namespace Draw
  * @brief Contains classes for drawing images and documents
  */
 namespace Draw
@@ -1084,6 +1084,7 @@ namespace Draw
 		
 		abstract class Chart extends Draw.Item.Item {
 			object canvas;
+			array groups;
 			array x_markers;
 			array values;
 			number highest_value;
@@ -1105,12 +1106,20 @@ namespace Draw
 			number y_marker_surface_height;
 			number x_marker_surface_width;
 			number x_marker_surface_height;
+			number legend_surface_width;
+			number legend_surface_height;
+			number x_axis_legend_surface_width;
+			number x_axis_legend_surface_height;
 			object y_marker_surface;
 			object y_marker_context;
 			object x_marker_surface;
 			object x_marker_context;
 			object grid_surface;
 			object grid_context;
+			object legend_surface;
+			object legend_context;
+			object x_axis_legend_surface;
+			object x_axis_legend_context;
 			array colours;
 			object grid_dark_background_colour;
 			object grid_light_background_colour;
@@ -1123,6 +1132,10 @@ namespace Draw
 			boolean height_set;
 			number marker_font_size;
 			string marker_font_face;
+			number legend_icon_width;
+			number legend_icon_height;
+			number legend_icon_padding;
+			string x_axis_legend;
 			
 			constructor {
 				.width_set = false;
@@ -1149,6 +1162,9 @@ namespace Draw
 				.grid_light_background_colour = new Draw.Color( 255, 255, 255 );
 				.grid_line_colour = new Draw.Color( 225, 225, 225 );
 				.grid_line_width = 1;
+				.legend_icon_width = 15;
+				.legend_icon_height = 15;
+				.legend_icon_padding = 15;
 			}
 
 			// Calculate the total width
@@ -1185,10 +1201,26 @@ namespace Draw
 					}
 				};
 			}
+			// Calculate the width and the height of the lagend surface
+			function calculate_legend_surface_size {
+				number widest_group_width = 0;
+				.groups.each() using ( group ) {
+					number group_width = group.width( .marker_font_size );
+					if( group_width > widest_group_width ) {
+						widest_group_width = group_width;
+					}
+				};
+				.legend_surface_width = .legend_icon_padding + .legend_icon_width + .legend_icon_padding + widest_group_width;
+				.legend_surface_height = .height;
+			}
 			// Calculate the width and the height of the y axis surface
 			function calculate_y_marker_surface_size {
 				.y_marker_surface_width = .highest_value_width;
 				.y_marker_surface_height = .height;
+			}
+			function calculate_x_axis_legend_surface_size {
+				.x_axis_legend_surface_width = .width - .y_marker_surface_width - .y_marker_surface_right_margin - .legend_surface_width;
+				.x_axis_legend_surface_height = .marker_height * 2;
 			}
 			// Calculate the width and the height of the x axis surface
 			function calculate_x_marker_surface_size {
@@ -1217,12 +1249,13 @@ namespace Draw
 				} else
 					.x_marker_surface_width = .widest_x_marker_width;
 					
-				.x_marker_surface_height = .width - .y_marker_surface_width - .y_marker_surface_right_margin;
+				//.x_marker_surface_height = .width - .y_marker_surface_width - .y_marker_surface_right_margin - .legend_surface_width;
+				.x_marker_surface_height = .x_axis_legend_surface_width;
 			}
 			// Calculate the width and the height of the grid surface
 			function calculate_grid_surface_size {
-				.grid_surface_width = .width - .y_marker_surface_width - .y_marker_surface_right_margin;
-				.grid_surface_height = .height - .x_marker_surface_width - .x_marker_surface_top_margin - ( .marker_height / 2.0 );
+				.grid_surface_width = .width - .y_marker_surface_width - .y_marker_surface_right_margin - .legend_surface_width;
+				.grid_surface_height = .height - .x_axis_legend_surface_height - .x_marker_surface_width - .x_marker_surface_top_margin - ( .marker_height / 2.0 );
 			}
 			// Calculate how many y markers to show and what the increment between them should be
 			function calculate_y_marker_scales {
@@ -1254,6 +1287,18 @@ namespace Draw
 				.y_scale_value = ( .number_of_y_markers * .y_marker_increment ) / .grid_surface_height;
 				.y_grid_line_increment = ( .y_marker_increment + 0.0 ) / 2;
 			}
+			function create_legend_objects {
+				.legend_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, .legend_surface_width, .legend_surface_height );
+				.legend_context = new Cairo.Context( .legend_surface );
+				.legend_context.setSourceRGB( 1.0, 1.0, 1.0 );
+				.legend_context.paint();
+			}
+			function create_x_axis_legend_objects {
+				.x_axis_legend_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, .x_axis_legend_surface_width, .x_axis_legend_surface_height );
+				.x_axis_legend_context = new Cairo.Context( .x_axis_legend_surface );
+				.x_axis_legend_context.setSourceRGB( 1.0, 1.0, 1.0 );
+				.x_axis_legend_context.paint();
+			}
 			// Create the grid surface and grid context
 			function create_grid_objects {
 				.grid_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, .grid_surface_width, .grid_surface_height );
@@ -1277,6 +1322,42 @@ namespace Draw
 				// Paint the surface with white background
 				.x_marker_context.setSourceRGB( 1.0, 1.0, 1.0 );
 				.x_marker_context.paint();
+			}
+			function draw_legend_surface {
+				// create a little surface which is the height of what the icons will use
+				number numberOfGroups = .groups.size();
+				number little_surface_width = .legend_surface_width;
+				number little_surface_height = ( numberOfGroups * ( .legend_icon_height + .legend_icon_padding ) ) + .legend_icon_padding;
+				object little_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, little_surface_width, little_surface_height );
+				object little_context = new Cairo.Context( little_surface );
+				little_context.setSourceRGB( 1.0, 1.0, 1.0 );
+				little_context.paint();
+				little_context.setSourceRGB( 0.0, 0.0, 0.0 );
+				.groups.eachWithIndex() using ( group, index ) {
+					number x = .legend_icon_padding + .legend_icon_width + .legend_icon_padding;
+					number y = ( index * .legend_icon_height ) + .legend_icon_padding + .marker_height + ( ( .legend_icon_height - .marker_height ) / 2 );
+					little_context.moveTo( x, y );
+					little_context.showText( group );
+				};
+				.groups.eachWithIndex() using ( group, index ) {
+					number x = .legend_icon_padding;
+					number y = ( index * .legend_icon_height ) + .legend_icon_padding;
+					object colour = .colours[index];
+					little_context.setSourceRGB( colour.red, colour.green, colour.blue );
+					little_context.rectangle( x, y, .legend_icon_width, .legend_icon_height );
+					little_context.fill();
+				};
+				// Paint little surface to legend surface
+				.legend_context.setSourceSurface( little_surface, 0, ( .grid_surface_height / 2 ) - ( little_surface_height / 2 ) );
+				.legend_context.paint();
+			}
+			function draw_x_axis_legend_surface {
+				number w = .x_axis_legend.width( .marker_font_size );
+				number x = ( .grid_surface_width / 2 ) - ( w / 2 );
+				number y = .x_axis_legend_surface_height - ( .marker_height / 2 );
+				.x_axis_legend_context.setSourceRGB( 0.0, 0.0, 0.0 );
+				.x_axis_legend_context.moveTo( x, y );
+				.x_axis_legend_context.showText( .x_axis_legend );
 			}
 			// Draw the y axis marker surface
 			function draw_y_marker_surface {
@@ -1332,9 +1413,23 @@ namespace Draw
 				.grid_context.stroke();
 
 			}
+			// Paint the legend surface to the main canvas surface
+			function paint_legend_surface_to_main_surface {
+				number x = .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin + .grid_surface_width;
+				number y = .begin_position.y;
+				.context.setSourceSurface( .legend_surface, x, y  );
+				.context.paint();
+			}
+			function paint_x_axis_legend_surface_to_main_surface {
+				number x = .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin;
+				number y = .begin_position.y + .height - .x_axis_legend_surface_height;
+				.context.setSourceSurface( .x_axis_legend_surface, x, y );
+				.context.paint();
+			}
 			// Paint the x marker surface to the main canvas surface
 			function paint_x_marker_surface_to_main_surface {
-				number x = - ( .begin_position.y + .height );
+				// rotation means x and y are switched
+				number x = - ( .begin_position.y + .height - .x_axis_legend_surface_height );
 				number y = .begin_position.x + .y_marker_surface_width + .y_marker_surface_right_margin;
 				.context.save();
 				.context.rotate( -90.0 * ( Math.pi() / 180.0 ) );
@@ -1356,6 +1451,10 @@ namespace Draw
 			}
 			
 			function setData( array data ) {
+				if( data.keyExists( 'ColumnHeaders' ) and data['ColumnHeaders'].size() > 1 ) {
+					.x_axis_legend = data['ColumnHeaders'][0];
+					.groups = data['ColumnHeaders'][1..];
+				}
 				if( data.keyExists( 'Rows' ) ) {
 					data['Rows'].each() using ( row ) {
 						.x_markers[] = row[0];
@@ -1394,10 +1493,14 @@ namespace Draw
 				.calculate_item_height();
 				.calculate_highest_value();
 				.calculate_widest_x_marker_width();
+				.calculate_legend_surface_size();
 				.calculate_y_marker_surface_size();
+				.calculate_x_axis_legend_surface_size();
 				.calculate_x_marker_surface_size();
 				.calculate_grid_surface_size();
 				.calculate_y_marker_scales();
+				.create_legend_objects();
+				.create_x_axis_legend_objects();
 				.create_y_marker_objects();
 				.create_x_marker_objects();
 				.create_grid_objects();
@@ -1405,9 +1508,13 @@ namespace Draw
 			
 			function post_surface_render {
 				.draw_axis_lines_to_grid_surface();
+				.draw_legend_surface();
+				.draw_x_axis_legend_surface();
+				.paint_legend_surface_to_main_surface();
 				.paint_x_marker_surface_to_main_surface();
 				.paint_y_marker_surface_to_main_surface();
 				.paint_grid_surface_to_main_surface();
+				.paint_x_axis_legend_surface_to_main_surface();
 			}
 		}
 		
