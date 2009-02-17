@@ -1466,6 +1466,7 @@ namespace Draw
 						.values[] = row;
 					};
 				}
+				.highest_value = .highest_value.round();
 			}
 			
 			function setWidth( number width ) {
@@ -1574,22 +1575,12 @@ namespace Draw
 				.pre_surface_render( canvas, context, begin_position, limit_position );
 				
 				if( .values.size() == 0 ) {
-					object text = new Draw.Item.Text();
-					text.setText( 'No enough data provided to draw this chart.' );
-					return text.render( canvas,
-					                    context,
-					                    new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
-					                    new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );
+					return new Draw.Position( begin_position.x, begin_position.y );
 				}
 				{
 					number x_markers_width = .x_markers.size() * ( .marker_height + ( .marker_height / 2 ) );
 					if( ( x_markers_width ) > .grid_surface_width ) {
-						object text = new Draw.Item.Text();
-						text.setText( 'To much data provided to draw this chart.' );
-						return text.render( canvas,
-							                context,
-							                new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
-							                new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );						
+						return new Draw.Position( begin_position.x, begin_position.y );						
 					}
 				}
 
@@ -1662,22 +1653,12 @@ namespace Draw
 				.pre_surface_render( canvas, context, begin_position, limit_position );
 
 				if( .values.size() < 2 ) {
-					object text = new Draw.Item.Text();
-					text.setText( 'No enough data provided to draw this chart.' );
-					return text.render( canvas,
-					                    context,
-					                    new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
-					                    new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );
+					return new Draw.Positon( begin_position.x, begin_position.y );
 				}
 				{
 					number x_markers_width = .x_markers.size() * ( .marker_height + ( .marker_height / 2 ) );
 					if( ( x_markers_width ) > .grid_surface_width ) {
-						object text = new Draw.Item.Text();
-						text.setText( 'To much data provided to draw this chart.' );
-						return text.render( canvas,
-							                context,
-							                new Draw.Position( begin_position.x + .marginLeft, begin_position.y + .marginTop ),
-							                new Draw.Position( limit_position.x - .marginRight, limit_position.y - .marginBottom ) );						
+						return new Draw.Position( begin_position.x, begin_position.y );					
 					}
 				}
 
