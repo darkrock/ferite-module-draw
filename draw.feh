@@ -687,7 +687,7 @@ namespace Draw
 				.angle = degrees * ( Math.pi( ) / 180 );
 			}
 			
-			function extents {
+			function extents() {
 				object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 1, 1 );
 				object context = new Cairo.Context( surface );
 				context.selectFontFace( .fontFace, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
@@ -695,20 +695,17 @@ namespace Draw
 				return context.textExtents( .text );
 			}
 			
-			function getWidth
-				return .extents().width;
-			
-			function getHeight
+			function getHeight() {
 				return .extents().height;
-			
-			function getWidth {
+			}
+			function getWidth() {
 				object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 1, 1 );
 				object context = new Cairo.Context( surface );
 				object extents;
 				context.selectFontFace( .fontFace, Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
 				context.setFontSize( .fontSize );
 				extents = context_text_extents( .text );
-				return extents.height;
+				return extents.width;
 			}			
 			
 			function render( object document, object context,
