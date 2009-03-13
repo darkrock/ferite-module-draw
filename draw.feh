@@ -512,13 +512,13 @@ namespace Draw
 		 */
 		abstract class Item
 		{
-			protected boolean fixedPosition;
-			protected object beginPosition;
-			protected object backgroundColor;
-			protected number marginTop;
-			protected number marginBottom;
-			protected number marginLeft;
-			protected number marginRight;
+			boolean fixedPosition;
+			object beginPosition;
+			object backgroundColor;
+			number marginTop;
+			number marginBottom;
+			number marginLeft;
+			number marginRight;
 			
 			/**
 			 * @function setFixedPosition
@@ -1684,11 +1684,11 @@ namespace Draw
 		 */
 		class Container extends Draw.Item.Item
 		{
-			protected array items;
-			protected array columnBackgroundColors;
-			protected number columns;
-			protected number borderWidth;
-			protected object borderColor;
+			array items;
+			array columnBackgroundColors;
+			number columns;
+			number borderWidth;
+			object borderColor;
 			
 			constructor {
 				.items = [ ];
