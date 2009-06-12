@@ -5,12 +5,18 @@ uses 'math';
 uses 'pango';
 
 namespace modifies String {
+	object _cairo_surface;
+	object _cairo_context;
 	function _createTextExtents( string str, number size ) {
-		object surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 0, 0 );
-		object context = new Cairo.Context( surface );
-		context.selectFontFace( 'Sans', Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
-		context.setFontSize( size );
-		return context.textExtents( str );
+		if( not ._cairo_surface ) {
+			._cairo_surface = new Cairo.ImageSurface( Cairo.FORMAT_RGB24, 0, 0 );
+		}
+		if( not ._cairo_context ) {
+			._cairo_context = new Cairo.Context( ._cairo_surface );
+			._cairo_context.selectFontFace( 'Sans', Cairo.FONT_SLANT_NORMAL, Cairo.FONT_WEIGHT_NORMAL );
+		}
+		._cairo_context.setFontSize( size );
+		return ._cairo_context.textExtents( str );
 	}
 	function width( string str, number size ) {
 		number width = ._createTextExtents( str, size ).width;
@@ -1189,15 +1195,6 @@ namespace Draw
 				.highest_value_width = String.width( "${.highest_value}", .marker_font_size );
 				.marker_height = String.height( "${.highest_value}", .marker_font_size );
 			}
-			// Calculate the width of the widest x marker
-			function calculate_widest_x_marker_width {
-				.x_markers.each() using ( m ) {
-					number m_width = m.width( .marker_font_size );
-					if( m_width > .widest_x_marker_width ) {
-						.widest_x_marker_width = m_width;
-					}
-				};
-			}
 			// Calculate the width and the height of the lagend surface
 			function calculate_legend_surface_size {
 				number widest_group_width = 0;
@@ -1222,29 +1219,30 @@ namespace Draw
 			// Calculate the width and the height of the x axis surface
 			function calculate_x_marker_surface_size {
 				number max_width = .height * 0.6;
-				if( .widest_x_marker_width > max_width ) {
-					array new_x_markers = [];
-					.x_markers.each() using ( marker ) {
-						string m = '' + marker;
-						number m_width = m.width( .marker_font_size );
-						if( m_width > max_width ) {
-							// Remove 3 characters for ...
-							m = m.utf8Slice( m.utf8Length() - 4 );
-							m = m.trim( ' ' );
+				array new_x_markers = [];
+				
+				for( number i = 0; i < .x_markers.size(); i++ ) {
+					string m = '' + .x_markers[i];
+					number m_width = m.width( .marker_font_size );
+					if( m_width > max_width ) {
+						// Remove 3 characters for ...
+						m = m.utf8Slice( m.utf8Length() - 4 );
+						m = m.trim( ' ' );
+						m_width = m.width( .marker_font_size );
+						while( m_width > max_width ) {
+							m = m.utf8Slice( m.utf8Length() - 2 );
 							m_width = m.width( .marker_font_size );
-							while( m_width > max_width ) {
-								m = m.utf8Slice( m.utf8Length() - 2 );
-								m_width = m.width( .marker_font_size );
-							}
-							m = m.trim( ' ' ) + '...';
 						}
-						new_x_markers[] = m;
-					};
-					.x_markers = new_x_markers;
-					.x_marker_surface_width = max_width;
-					.widest_x_marker_width = max_width;
-				} else
-					.x_marker_surface_width = .widest_x_marker_width;
+						m = m.trim( ' ' ) + '...';
+					}
+					new_x_markers[] = m;
+					if( m_width > .widest_x_marker_width ) {
+						.widest_x_marker_width = m_width;
+					}
+				}
+				
+				.x_markers = new_x_markers;
+				.x_marker_surface_width = .widest_x_marker_width;
 					
 				//.x_marker_surface_height = .width - .y_marker_surface_width - .y_marker_surface_right_margin - .legend_surface_width;
 				.x_marker_surface_height = .x_axis_legend_surface_width;
@@ -1329,19 +1327,24 @@ namespace Draw
 				object little_context = new Cairo.Context( little_surface );
 				little_context.setSourceRGB( 1.0, 1.0, 1.0 );
 				little_context.paint();
-				little_context.setSourceRGB( 0.0, 0.0, 0.0 );
 				.groups.eachWithIndex() using ( group, index ) {
-					number x = .legend_icon_padding + .legend_icon_width + .legend_icon_padding;
-					number y = ( index * .legend_icon_height ) + .legend_icon_padding + .marker_height + ( ( .legend_icon_height - .marker_height ) / 2 );
-					little_context.moveTo( x, y );
+					number text_x;
+					number text_y;
+					number icon_x;
+					number icon_y;
+					object colour;
+					// text
+					text_x = .legend_icon_padding + .legend_icon_width + .legend_icon_padding;
+					text_y = ( index * .legend_icon_height ) + .legend_icon_padding + .marker_height + ( ( .legend_icon_height - .marker_height ) / 2 );
+					little_context.setSourceRGB( 0.0, 0.0, 0.0 );
+					little_context.moveTo( text_x, text_y );
 					little_context.showText( group );
-				};
-				.groups.eachWithIndex() using ( group, index ) {
-					number x = .legend_icon_padding;
-					number y = ( index * .legend_icon_height ) + .legend_icon_padding;
-					object colour = .colours[index];
+					// icon
+					icon_x = .legend_icon_padding;
+					icon_y = ( index * .legend_icon_height ) + .legend_icon_padding;
+					colour = .colours[index];
 					little_context.setSourceRGB( colour.red, colour.green, colour.blue );
-					little_context.rectangle( x, y, .legend_icon_width, .legend_icon_height );
+					little_context.rectangle( icon_x, icon_y, .legend_icon_width, .legend_icon_height );
 					little_context.fill();
 				};
 				// Paint little surface to legend surface
@@ -1490,7 +1493,6 @@ namespace Draw
 				.calculate_item_width();
 				.calculate_item_height();
 				.calculate_highest_value();
-				.calculate_widest_x_marker_width();
 				.calculate_legend_surface_size();
 				.calculate_y_marker_surface_size();
 				.calculate_x_axis_legend_surface_size();
@@ -1552,8 +1554,10 @@ namespace Draw
 			function draw_bars_to_grid_surface {
 				number vertical_grid_lines = ( .x_markers.size() * .values[0].size() ) + .x_markers.size() + 1;
 				.grid_context.setLineWidth( 0.5 );
-				.values.eachWithIndex() using ( row, group_index ) {
-					row.eachWithIndex() using ( value, value_index ) {
+				for( number group_index = 0; group_index < .values.size(); group_index++ ) {
+					array row = .values[group_index];
+					for( number value_index = 0; value_index < row.size(); value_index++ ) {
+						number value = row[value_index];
 						number x = .x( group_index + 1 + ( group_index * .values[0].size() ) + value_index ) - 2;
 						number y = .y( value );
 						number w = .grid_surface_width / vertical_grid_lines;
@@ -1565,8 +1569,8 @@ namespace Draw
 						.grid_context.setSourceRGB( 0.0, 0.0, 0.0 );
 						.grid_context.rectangle( x, y, w, h );
 						.grid_context.stroke();
-					};
-				};
+					}
+				}
 			}
 			function render( object canvas, object context, object begin_position, object limit_position ) {
 				.pre_surface_render( canvas, context, begin_position, limit_position );
@@ -1628,10 +1632,12 @@ namespace Draw
 				number number_of_groups = .values.size();
 				number last_group_index = number_of_groups - 1;
 				.grid_context.setLineWidth( 2 );
-				.values.eachWithIndex() using ( group, group_index ) {
+				for( number group_index = 0; group_index < .values.size(); group_index++ ) {
 					if( group_index < last_group_index ) {
+						array group = .values[group_index];
 						number next_group_index = group_index + 1;
-						group.eachWithIndex() using ( value, value_index ) {
+						for( number value_index = 0; value_index < group.size(); value_index++ ) {
+							number value = group[value_index];
 							number next_value = .values[next_group_index][value_index];
 							number start_x = .x( group_index + 1 ) - 2; // +1 because we don't want to draw directly on the y axis
 							number start_y = .y( value );
@@ -1642,7 +1648,7 @@ namespace Draw
 							.grid_context.moveTo( start_x, start_y );
 							.grid_context.lineTo( end_x, end_y );
 							.grid_context.stroke();
-						};
+						}
 					}
 				};
 			}
