@@ -1268,11 +1268,11 @@ namespace Draw
 					.y_marker_increment = .highest_value / .number_of_y_markers;
 					.y_marker_increment = .y_marker_increment.ceil();
 					.y_marker_increment = .y_marker_increment.round();
-				
-					while( ( .number_of_y_markers * .y_marker_increment ) < .highest_value )
+					
+					if( ( .number_of_y_markers * .y_marker_increment ) < .highest_value )
 						.y_marker_increment++;
-				
-					while( ( ( .number_of_y_markers - 1 ) * .y_marker_increment ) > .highest_value )
+					
+					if( ( ( .number_of_y_markers - 1 ) * .y_marker_increment ) > .highest_value )
 						.number_of_y_markers--;
 				} else {
 					.y_marker_increment = 1;
@@ -1456,15 +1456,18 @@ namespace Draw
 					.groups = data['ColumnHeaders'][1..];
 				}
 				if( data.keyExists( 'Rows' ) ) {
-					data['Rows'].each() using ( row ) {
+					for( number i = 0; i < data['Rows'].size(); i++ ) {
+						array row = data['Rows'][i];
+						array real_row = [];
 						.x_markers[] = row[0];
-						row.del( 0 );
-						row.each() using ( value ) {
+						for( number j = 1; j < data['ColumnHeaders'].size(); j++ ) {
+							number value = row[j];
 							if( value > .highest_value )
 								.highest_value = value;
-						};
-						.values[] = row;
-					};
+							real_row[] = value;
+						}
+						.values[] = real_row;
+					}
 				}
 				.highest_value = .highest_value.round();
 			}
@@ -1553,8 +1556,9 @@ namespace Draw
 			// Draw the bars to the grid surface
 			function draw_bars_to_grid_surface {
 				number vertical_grid_lines = ( .x_markers.size() * .values[0].size() ) + .x_markers.size() + 1;
+				number values_size = .values.size();
 				.grid_context.setLineWidth( 0.5 );
-				for( number group_index = 0; group_index < .values.size(); group_index++ ) {
+				for( number group_index = 0; group_index < values_size; group_index++ ) {
 					array row = .values[group_index];
 					for( number value_index = 0; value_index < row.size(); value_index++ ) {
 						number value = row[value_index];
