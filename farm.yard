@@ -1,12 +1,25 @@
 <?xml version="1.0" ?>
-<yard name="easydraw">
+<yard name="draw">
+
+	<property id="name" value="ferite-draw" />
+	<property id="version" value="1.0" />
+	
+	<collection id="draw">
+		<property type="prefix" value="$(FeriteModuleSourceDir)" />  
+
+		<list type="source">
+			<file name="draw.feh" />
+			<file name="draw-template.feh" />
+		</list>
+
+		<list type="package">
+			<file name="draw.xml" />
+			<file name="ChangeLog" />
+		</list>
+	</collection>
 
 	<phase id="install">
-		<copy file="draw.feh" target="$(FeriteModuleSourceDir)" />
-		<copy file="draw-template.feh" target="$(FeriteModuleSourceDir)" />
+		<perform action="install" target="draw" />
 		<copy file="draw.xml" target="$(FeriteModuleDescriptionDir)" />
-		<execute program="feritedoc" arguments="--regenerate" />
 	</phase>
-
 </yard>
-
