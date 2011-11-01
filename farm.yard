@@ -2,7 +2,7 @@
 <yard name="draw">
 
 	<property id="name" value="ferite-draw" />
-	<property id="version" value="3.1" />
+	<property id="version" value="3.2" />
 	
 	<collection id="draw">
 		<property type="prefix" value="$(FeriteModuleSourceDir)" />  
